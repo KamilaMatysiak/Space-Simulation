@@ -30,6 +30,18 @@
     <None Include="shaders\shader_tex.vert">
       <Filter>Shader Files</Filter>
     </None>
+    <None Include="shaders\shader_4_tex.frag">
+      <Filter>Shader Files</Filter>
+    </None>
+    <None Include="shaders\shader_4_tex.vert">
+      <Filter>Shader Files</Filter>
+    </None>
+    <None Include="shaders\shader_4_sun.frag">
+      <Filter>Shader Files</Filter>
+    </None>
+    <None Include="shaders\shader_4_sun.vert">
+      <Filter>Shader Files</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Box.cpp">

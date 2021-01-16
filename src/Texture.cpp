@@ -1,9 +1,5 @@
 #include "Texture.h"
 
-#include <fstream>
-#include <iterator>
-#include <vector>
-#include "picopng.h"
 
 typedef unsigned char byte;
 
@@ -18,6 +14,12 @@ GLuint Core::LoadTexture( const char * filepath )
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
 	std::ifstream input( filepath, std::ios::binary );
+	if (!input.is_open())
+	{
+		std::cout << "Nie ma tekstury o takiej nazwie." << std::endl;
+		input.open("textures/a.jpg", std::ios::binary);
+
+	}
 	std::vector<char> buffer((
 		std::istreambuf_iterator<char>(input)), 
 		(std::istreambuf_iterator<char>()));
@@ -25,7 +27,6 @@ GLuint Core::LoadTexture( const char * filepath )
 	unsigned long w, h;
 	std::vector<unsigned char> decoded;
 	decodePNG(decoded, w, h, (unsigned char*)&buffer[0], buffer.size(), true);
-	
 
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, &decoded[0]);
 	glGenerateMipmap(GL_TEXTURE_2D);

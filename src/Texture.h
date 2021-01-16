@@ -1,5 +1,10 @@
 #pragma once
+#include <iostream>
+#include <fstream>
+#include <iterator>
+#include <vector>
 
+#include "picopng.h"
 #include "glew.h"
 #include "freeglut.h"
 

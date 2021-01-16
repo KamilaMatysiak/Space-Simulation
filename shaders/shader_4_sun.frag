@@ -4,14 +4,18 @@ uniform vec3 objectColor;
 //uniform vec3 lightDir;
 uniform vec3 lightPos;
 uniform vec3 cameraPos;
+uniform sampler2D colorTexture;
 
 in vec3 interpNormal;
 in vec3 fragPos;
+in vec2 vTexCoord;
 
 void main()
 {
 	vec3 normal = normalize(interpNormal);
 	vec3 V = normalize(cameraPos-fragPos);
-	float coef = max(0,dot(V,normal));
-	gl_FragColor = vec4(mix(objectColor,vec3(1,0.5,0.1),1-coef), 1.0);
+	float coef = pow(max(0,dot(normal,V)),3);
+	vec4 textureColor = texture2D(colorTexture, -vTexCoord);
+	vec3 texture = vec3(textureColor.x, textureColor.y, textureColor.z);
+	gl_FragColor = vec4(texture + texture * coef, 1.0);
 }
