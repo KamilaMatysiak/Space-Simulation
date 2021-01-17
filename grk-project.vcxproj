@@ -17,6 +17,8 @@
     <None Include="shaders\shader_4_tex.vert" />
     <None Include="shaders\shader_color.frag" />
     <None Include="shaders\shader_color.vert" />
+    <None Include="shaders\shader_skybox.frag" />
+    <None Include="shaders\shader_skybox.vert" />
     <None Include="shaders\shader_tex.frag" />
     <None Include="shaders\shader_tex.vert" />
   </ItemGroup>
@@ -30,6 +32,7 @@
     <ClCompile Include="src\Texture.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Skybox.h" />
     <ClInclude Include="src\Camera.h" />
     <ClInclude Include="src\mesh.h" />
     <ClInclude Include="src\model.h" />
