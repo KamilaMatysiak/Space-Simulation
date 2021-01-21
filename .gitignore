@@ -11,6 +11,7 @@
 *.userprefs
 
 !dependencies/
+!models/
 
 # Build results
 [Dd]ebug/
