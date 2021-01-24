@@ -62,6 +62,7 @@ struct Light {
 	glm::vec3 color;
 };
 
+//wczytywanie skyboxa (musi byc jpg!)
 std::vector<std::string> faces
 {
 	"skybox/right.jpg",
@@ -120,6 +121,7 @@ void drawObject(GLuint program, Core::RenderContext context, glm::mat4 modelMatr
 	glUseProgram(0);
 }
 
+//funkcja rysujaca modele za pomoca assimpa
 void drawFromAssimpModel(GLuint program, std::shared_ptr<Model> model, glm::mat4 modelMatrix, glm::vec3 color)
 {
 	glUseProgram(program);
@@ -168,7 +170,6 @@ unsigned int loadCubemap(std::vector<std::string> faces)
 
 	return textureID;
 }
-
 void drawSkybox(GLuint program, Core::RenderContext context, GLuint texID)
 {
 	glUseProgram(program);
@@ -199,6 +200,7 @@ void drawObjectTexture(GLuint program, Core::RenderContext context, glm::mat4 mo
 	glUseProgram(0);
 }
 
+//funkcja rysujaca planety (bez obracania wokol wlasnej osi bo ksiezyce sie psuja)
 glm::mat4 drawPlanet(float time, glm::vec3 orbit, glm::vec3 translation, glm::vec3 scale)
 {
 	glm::mat4 planetModelMatrix = glm::mat4(1.0f);
@@ -209,6 +211,7 @@ glm::mat4 drawPlanet(float time, glm::vec3 orbit, glm::vec3 translation, glm::ve
 	return planetModelMatrix;
 }
 
+//funkcja rysujaca ksiezyce orbitujace wokol danej planety
 glm::mat4 drawMoon(glm::mat4 planetModelMatrix, float time, glm::vec3 orbit, glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale)
 {
 	glm::mat4 moonModelMatrix = glm::mat4(planetModelMatrix);
@@ -233,9 +236,11 @@ void renderScene()
 	glUseProgram(programSun);
 	glUniform3f(glGetUniformLocation(programSun, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 
+	//ustalanie pozycji s³oñc (lightPos)
 	glm::vec3 sunPos = glm::vec3(0.0f, 0.0f, 0.0f);
 	glm::vec3 sunPos2 = glm::vec3(5.0f, -1.0f, 10.0f);
 
+	//rysowanie s³oñc
 	glm::mat4 sunModelMatrix = glm::mat4(1.0f);
 	sunModelMatrix = glm::translate(sunModelMatrix, sunPos);
 	drawObjectTexture(programSun, sphereContext, sunModelMatrix, glm::vec3(0.5f, 0.8f, 0.8f), sunTexture);
@@ -247,13 +252,8 @@ void renderScene()
 
 
 
-
-
-
-
 	glUseProgram(programTex);
-	glm::mat4 shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.6f + glm::vec3(0, -0.25f, 0)) * glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.0001f));
-	//drawObjectTexture(programTex, shipContext, shipModelMatrix, glm::vec3(1.f), shipTexture);
+	
 
 	lights[0].position = sunPos;
 	lights[1].position = sunPos2;
@@ -266,12 +266,18 @@ void renderScene()
 	}
 
 	glUniform3f(glGetUniformLocation(programTex, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
+
+	//rysowanie statku
+	glm::mat4 shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.6f + glm::vec3(0, -0.25f, 0)) * glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.0001f));
+	drawFromAssimpModel(programTex, corvette, shipModelMatrix, glm::vec3(1));
+
+	//rysowanie Ziemi z ksiê¿ycem
 	glm::mat4 earth = drawPlanet(time / 5.0f, glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(-3.5f, 0.0f, -3.5f), glm::vec3(0.5f, 0.5f, 0.5f));
 	glm::mat4 moon = drawMoon(earth, time/2.0f, glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0, 1, 1), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.2f, 0.2f, 0.2f));
 	earth = glm::rotate(earth, time/3.0f, glm::vec3(0.0f, 0.0f, 1.0f));
 	drawObjectTexture(programTex, sphereContext, earth, glm::vec3(0.8f, 0.8f, 0.8f), earthTexture);
 	drawObjectTexture(programTex, sphereContext, moon, glm::vec3(0.9f, 1.0f, 0.9f), moonTexture);
-	drawFromAssimpModel(programTex, corvette, shipModelMatrix, glm::vec3(1));
+
 
 	glUseProgram(0);
 	glutSwapBuffers();
