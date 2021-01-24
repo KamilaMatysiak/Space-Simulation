@@ -5,7 +5,7 @@
 #include <iostream>
 #include <cmath>
 #include <ctime>
-
+#include <vector>
 #include "Shader_Loader.h"
 #include "Render_Utils.h"
 #include "Camera.h"
@@ -20,7 +20,7 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
-
+//int winId;
 GLuint program;
 GLuint programTex;
 GLuint programSun;
@@ -31,15 +31,18 @@ Core::RenderContext armContext;
 std::vector<Core::Node> arm;
 int ballIndex;
 
+GLuint textureShip_normals;
 GLuint sunTexture;
 GLuint earthTexture;
 GLuint moonTexture;
 GLuint skyboxTexture;
+GLuint shipTexture;
 obj::Model sphereModel;
 obj::Model cubeModel;
+obj::Model shipModel;
 Core::RenderContext sphereContext;
 Core::RenderContext cubeContext;
-
+Core::RenderContext shipContext;
 
 float cameraAngle = 0;
 glm::vec3 cameraPos = glm::vec3(-6, 0, 0);
@@ -91,6 +94,7 @@ glm::mat4 createCameraMatrix()
 
 	return Core::createViewMatrix(cameraPos, cameraDir, up);
 }
+float frustumScale = 1.f;
 
 
 
@@ -196,7 +200,7 @@ glm::mat4 drawMoon(glm::mat4 planetModelMatrix, float time, glm::vec3 orbit, glm
 void renderScene()
 {
 	cameraMatrix = createCameraMatrix();
-	perspectiveMatrix = Core::createPerspectiveMatrix();
+	perspectiveMatrix = Core::createPerspectiveMatrix(0.01f, 1000.0f, frustumScale);
 	float time = glutGet(GLUT_ELAPSED_TIME) / 1000.f;
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -212,13 +216,19 @@ void renderScene()
 
 	glm::mat4 sunModelMatrix = glm::mat4(1.0f);
 	sunModelMatrix = glm::translate(sunModelMatrix, sunPos);
-	sunModelMatrix = glm::rotate(sunModelMatrix, time/10.0f, glm::vec3(0.0f, 1.0f, 1.0f));
 	drawObjectTexture(programSun, sphereContext, sunModelMatrix, glm::vec3(0.5f, 0.8f, 0.8f), sunTexture);
 
 	glm::mat4 sunModelMatrix2 = glm::mat4(1.0f);
 	sunModelMatrix2 = glm::translate(sunModelMatrix2, sunPos2);
-	sunModelMatrix2 = glm::rotate(sunModelMatrix2, time / 10.0f, glm::vec3(0.0f, 1.0f, 1.0f));
+	sunModelMatrix2 = glm::rotate(sunModelMatrix2, time / 100.0f, glm::vec3(0.0f, 1.0f, 1.0f));
 	drawObjectTexture(programSun, sphereContext, sunModelMatrix2, glm::vec3(0.9f, 0.9f, 2.0f), sunTexture);
+
+
+	glm::mat4 shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.6f + glm::vec3(0, -0.25f, 0)) * glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.25f));
+	drawObjectTexture(programTex, shipContext, shipModelMatrix, glm::vec3(1.f) ,shipTexture);
+
+
+
 
 	glUseProgram(programTex);
 
@@ -252,10 +262,21 @@ void init()
 	programSun = shaderLoader.CreateProgram("shaders/shader_4_sun.vert", "shaders/shader_4_sun.frag");
 	programSkybox = shaderLoader.CreateProgram("shaders/shader_skybox.vert", "shaders/shader_skybox.frag");
 
+	
+
+	
+
+	//shipModel = obj::loadModelFromFile("models/spaceship.obj");
+	shipModel = obj::loadModelFromFile("models/spaceship.obj");
 	sphereModel = obj::loadModelFromFile("models/sphere.obj");
 	cubeModel = obj::loadModelFromFile("models/cube.obj");
+
 	sphereContext.initFromOBJ(sphereModel);
 	cubeContext.initFromOBJ(cubeModel);
+	shipContext.initFromOBJ(shipModel);
+
+
+	shipTexture = Core::LoadTexture("textures/spaceship.png");
 	sunTexture = Core::LoadTexture("textures/sun.png");
 	earthTexture = Core::LoadTexture("textures/earth2.png");
 	moonTexture = Core::LoadTexture("textures/moon.png");
@@ -278,6 +299,16 @@ void shutdown()
 	shaderLoader.DeleteProgram(program);
 }
 
+void onReshape(int width, int height)
+{
+	// Kiedy rozmiar okna sie zmieni, obraz jest znieksztalcony.
+	// Dostosuj odpowiednio macierz perspektywy i viewport.
+	// Oblicz odpowiednio globalna zmienna "frustumScale".
+	// Ustaw odpowiednio viewport - zobacz:
+	// https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glViewport.xhtml
+	frustumScale = (float)width / (float)height;
+	glViewport(0, 0, width, height);
+}
 void idle()
 {
 	glutPostRedisplay();
@@ -287,9 +318,11 @@ int main(int argc, char** argv)
 {
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
-	glutInitWindowPosition(200, 300);
-	glutInitWindowSize(600, 600);
+	glutInitWindowPosition(100, 200);
+	glutInitWindowSize(1240, 720);
 	glutCreateWindow("GRK-PROJECT WIP");
+	//winId = glutCreateWindow("OpenGL + PhysX");
+	//glutFullScreen();
 	glewInit();
 
 	init();
@@ -297,6 +330,7 @@ int main(int argc, char** argv)
 	glutDisplayFunc(renderScene);
 	glutIdleFunc(idle);
 
+	glutReshapeFunc(onReshape);
 	glutMainLoop();
 
 	shutdown();
