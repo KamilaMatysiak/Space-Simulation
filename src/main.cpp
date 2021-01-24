@@ -16,6 +16,7 @@
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
+#include "model.h"
 
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -40,9 +41,14 @@ GLuint shipTexture;
 obj::Model sphereModel;
 obj::Model cubeModel;
 obj::Model shipModel;
+
 Core::RenderContext sphereContext;
 Core::RenderContext cubeContext;
 Core::RenderContext shipContext;
+
+//assimp
+std::shared_ptr<Model> corvette;
+std::vector<Core::RenderContext> corvetteMeshes;
 
 float cameraAngle = 0;
 glm::vec3 cameraPos = glm::vec3(-6, 0, 0);
@@ -111,6 +117,22 @@ void drawObject(GLuint program, Core::RenderContext context, glm::mat4 modelMatr
 	glUniformMatrix4fv(glGetUniformLocation(program, "transformation"), 1, GL_FALSE, (float*)&transformation);
 
 	Core::DrawContext(context);
+	glUseProgram(0);
+}
+
+void drawFromAssimpModel(GLuint program, std::shared_ptr<Model> model, glm::mat4 modelMatrix, glm::vec3 color)
+{
+	glUseProgram(program);
+
+	glUniform3f(glGetUniformLocation(program, "objectColor"), color.x, color.y, color.z);
+
+	glm::mat4 transformation = perspectiveMatrix * cameraMatrix * modelMatrix;
+
+	glUniformMatrix4fv(glGetUniformLocation(program, "modelMatrix"), 1, GL_FALSE, (float*)&modelMatrix);
+	glUniformMatrix4fv(glGetUniformLocation(program, "transformation"), 1, GL_FALSE, (float*)&transformation);
+
+	model->Draw(program);
+
 	glUseProgram(0);
 }
 
@@ -224,13 +246,14 @@ void renderScene()
 	drawObjectTexture(programSun, sphereContext, sunModelMatrix2, glm::vec3(0.9f, 0.9f, 2.0f), sunTexture);
 
 
-	glm::mat4 shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.6f + glm::vec3(0, -0.25f, 0)) * glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.25f));
-	drawObjectTexture(programTex, shipContext, shipModelMatrix, glm::vec3(1.f) ,shipTexture);
+
 
 
 
 
 	glUseProgram(programTex);
+	glm::mat4 shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.6f + glm::vec3(0, -0.25f, 0)) * glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.0001f));
+	//drawObjectTexture(programTex, shipContext, shipModelMatrix, glm::vec3(1.f), shipTexture);
 
 	lights[0].position = sunPos;
 	lights[1].position = sunPos2;
@@ -248,7 +271,7 @@ void renderScene()
 	earth = glm::rotate(earth, time/3.0f, glm::vec3(0.0f, 0.0f, 1.0f));
 	drawObjectTexture(programTex, sphereContext, earth, glm::vec3(0.8f, 0.8f, 0.8f), earthTexture);
 	drawObjectTexture(programTex, sphereContext, moon, glm::vec3(0.9f, 1.0f, 0.9f), moonTexture);
-
+	drawFromAssimpModel(programTex, corvette, shipModelMatrix, glm::vec3(1));
 
 	glUseProgram(0);
 	glutSwapBuffers();
@@ -265,17 +288,14 @@ void init()
 	
 
 	
-
+	corvette = std::make_shared<Model>("models/Corvette-F3.obj");
 	//shipModel = obj::loadModelFromFile("models/spaceship.obj");
-	shipModel = obj::loadModelFromFile("models/spaceship.obj");
 	sphereModel = obj::loadModelFromFile("models/sphere.obj");
 	cubeModel = obj::loadModelFromFile("models/cube.obj");
 
 	sphereContext.initFromOBJ(sphereModel);
 	cubeContext.initFromOBJ(cubeModel);
-	shipContext.initFromOBJ(shipModel);
-
-
+	//shipContext.initFromOBJ(shipModel);
 	shipTexture = Core::LoadTexture("textures/spaceship.png");
 	sunTexture = Core::LoadTexture("textures/sun.png");
 	earthTexture = Core::LoadTexture("textures/earth2.png");

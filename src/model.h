@@ -66,25 +66,25 @@ private:
         directory = path.substr(0, path.find_last_of('/'));
 
         // process ASSIMP's root node recursively
-        processNode(scene->mRootNode, scene,glm::mat4());
+        processNode(scene->mRootNode, scene, glm::mat4());
     }
 
     // processes a node in a recursive fashion. Processes each individual mesh located at the node and repeats this process on its children nodes (if any).
-    void processNode(aiNode* node, const aiScene* scene,glm::mat4 matrix)
+    void processNode(aiNode* node, const aiScene* scene, glm::mat4 matrix)
     {
-        glm::mat4 outMatrix = matrix * mat4_cast(node->mTransformation);
+        //glm::mat4 outMatrix = matrix * glm::mat4_cast(node->mTransformation);
         // process each mesh located at the current node
         for (unsigned int i = 0; i < node->mNumMeshes; i++)
         {
             // the node object only contains indices to index the actual objects in the scene. 
             // the scene contains all the data, node is just to keep stuff organized (like relations between nodes).
             aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
-            meshes.push_back(processMesh(mesh, scene, outMatrix));
+            meshes.push_back(processMesh(mesh, scene, glm::mat4())); //tu byl out
         }
         // after we've processed all of the meshes (if any) we then recursively process each of the children nodes
         for (unsigned int i = 0; i < node->mNumChildren; i++)
         {
-            processNode(node->mChildren[i], scene, outMatrix);
+            processNode(node->mChildren[i], scene, glm::mat4()); // tu byl out
         }
 
     }
