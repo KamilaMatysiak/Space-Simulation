@@ -30,10 +30,17 @@ void main()
 		vec3 lightDir = normalize(pointLights[i].position - fragPos);
 	
 		vec3 V = normalize(cameraPos-fragPos);
-		vec3 R = reflect(-normalize(lightDir),normal);
+		vec3 R = reflect(-lightDir,normal);
+
+		float dist = 1 + distance(fragPos, pointLights[i].position) / 50;
+		float distance = (1/dist) * (1/dist);
 	
-		float specular = pow(max(0,dot(R,V)),10);
-		float diffuse = max(0,dot(normal,normalize(lightDir)));
+		float spec = pow(max(0,dot(R,V)),2);
+		float diff = max(0,dot(normal,normalize(lightDir)));
+
+		vec3 diffuse = pointLights[i].color * diff * distance;
+		vec3 specular = spec * pointLights[i].color * (1/dist);
+
 		vec3 texture = vec3(textureColor.x, textureColor.y, textureColor.z) * pointLights[i].color;
 		fragColor += mix(texture,texture*diffuse+vec3(1)*specular,0.9);
 	}

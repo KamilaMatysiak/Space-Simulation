@@ -201,10 +201,10 @@ void drawObjectTexture(GLuint program, Core::RenderContext context, glm::mat4 mo
 }
 
 //funkcja rysujaca planety (bez obracania wokol wlasnej osi bo ksiezyce sie psuja)
-glm::mat4 drawPlanet(float time, glm::vec3 orbit, glm::vec3 translation, glm::vec3 scale)
+glm::mat4 drawPlanet(float time, glm::vec3 sunPos, glm::vec3 orbit, glm::vec3 translation, glm::vec3 scale)
 {
 	glm::mat4 planetModelMatrix = glm::mat4(1.0f);
-	planetModelMatrix = glm::translate(planetModelMatrix, glm::vec3(2, 0, 2)); //pozycja s³oñca
+	planetModelMatrix = glm::translate(planetModelMatrix, sunPos); 
 	planetModelMatrix = glm::rotate(planetModelMatrix, time, orbit);
 	planetModelMatrix = glm::translate(planetModelMatrix, translation);
 	planetModelMatrix = glm::scale(planetModelMatrix, scale);
@@ -237,17 +237,17 @@ void renderScene()
 	glUniform3f(glGetUniformLocation(programSun, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 
 	//ustalanie pozycji s³oñc (lightPos)
-	glm::vec3 sunPos = glm::vec3(0.0f, 0.0f, 0.0f);
-	glm::vec3 sunPos2 = glm::vec3(5.0f, -1.0f, 10.0f);
+	glm::vec3 sunPos = glm::vec3(10.0f, 0.0f, -5.0f);
+	glm::vec3 sunPos2 = glm::vec3(25.0f, -1.0f, 10.0f);
 
 	//rysowanie s³oñc
 	glm::mat4 sunModelMatrix = glm::mat4(1.0f);
 	sunModelMatrix = glm::translate(sunModelMatrix, sunPos);
-	drawObjectTexture(programSun, sphereContext, sunModelMatrix, glm::vec3(0.5f, 0.8f, 0.8f), sunTexture);
+	sunModelMatrix = glm::scale(sunModelMatrix, glm::vec3(3.0f, 3.0f, 3.0f));
+	drawObjectTexture(programSun, sphereContext, sunModelMatrix, glm::vec3(1.5f, 1.8f, 1.8f), sunTexture);
 
 	glm::mat4 sunModelMatrix2 = glm::mat4(1.0f);
 	sunModelMatrix2 = glm::translate(sunModelMatrix2, sunPos2);
-	sunModelMatrix2 = glm::rotate(sunModelMatrix2, time / 100.0f, glm::vec3(0.0f, 1.0f, 1.0f));
 	drawObjectTexture(programSun, sphereContext, sunModelMatrix2, glm::vec3(0.9f, 0.9f, 2.0f), sunTexture);
 
 
@@ -272,8 +272,8 @@ void renderScene()
 	drawFromAssimpModel(programTex, corvette, shipModelMatrix, glm::vec3(1));
 
 	//rysowanie Ziemi z ksiê¿ycem
-	glm::mat4 earth = drawPlanet(time / 5.0f, glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(-3.5f, 0.0f, -3.5f), glm::vec3(0.5f, 0.5f, 0.5f));
-	glm::mat4 moon = drawMoon(earth, time/2.0f, glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0, 1, 1), glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(0.2f, 0.2f, 0.2f));
+	glm::mat4 earth = drawPlanet(time / 5.0f, sunPos*glm::vec3(1.5f,1,1), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(-10.5f, 0.0f, -10.5f), glm::vec3(0.5f, 0.5f, 0.5f));
+	glm::mat4 moon = drawMoon(earth, time/2.0f, glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0, 1, 1), glm::vec3(1.5f, 1.0f, 1.0f), glm::vec3(0.3f, 0.3f, 0.3f));
 	earth = glm::rotate(earth, time/3.0f, glm::vec3(0.0f, 0.0f, 1.0f));
 	drawObjectTexture(programTex, sphereContext, earth, glm::vec3(0.8f, 0.8f, 0.8f), earthTexture);
 	drawObjectTexture(programTex, sphereContext, moon, glm::vec3(0.9f, 1.0f, 0.9f), moonTexture);

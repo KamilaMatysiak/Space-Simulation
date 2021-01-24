@@ -14,7 +14,7 @@ void main()
 {
 	vec3 normal = normalize(interpNormal);
 	vec3 V = normalize(cameraPos-fragPos);
-	float coef = pow(max(0,dot(normal,V)),3);
+	float coef = pow(max(0,dot(normal,V)),2);
 	vec4 textureColor = texture2D(colorTexture, -vTexCoord);
 	vec3 texture = vec3(textureColor.x, textureColor.y, textureColor.z) * colorTex;
 	gl_FragColor = vec4(texture + texture * coef, 1.0);
