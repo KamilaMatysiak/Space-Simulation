@@ -56,11 +56,18 @@ glm::vec3 cameraDir;
 
 glm::mat4 cameraMatrix, perspectiveMatrix;
 
+glm::vec3 sunPos = glm::vec3(10.0f, 0.0f, -5.0f);
+glm::vec3 sunPos2 = glm::vec3(25.0f, -1.0f, 10.0f);
+glm::vec3 engineLight = cameraPos + cameraDir * 0.6f + glm::vec3(0, -0.25f, 0);
+
 
 struct Light {
 	glm::vec3 position;
 	glm::vec3 color;
+	float intensity;
 };
+
+int engineLightTimer;
 
 //wczytywanie skyboxa (musi byc jpg!)
 std::vector<std::string> faces
@@ -84,7 +91,13 @@ void keyboard(unsigned char key, int x, int y)
 	{
 	case 'z': cameraAngle -= angleSpeed; break;
 	case 'x': cameraAngle += angleSpeed; break;
-	case 'w': cameraPos += cameraDir * moveSpeed; break;
+	case 'w': 
+	{
+		cameraPos += cameraDir * moveSpeed;
+		lights[2].intensity = 0.001;
+		engineLightTimer = 0;
+		break;
+	}
 	case 's': cameraPos -= cameraDir * moveSpeed; break;
 	case 'd': cameraPos += glm::cross(cameraDir, glm::vec3(0, 1, 0)) * moveSpeed; break;
 	case 'a': cameraPos -= glm::cross(cameraDir, glm::vec3(0, 1, 0)) * moveSpeed; break;
@@ -237,8 +250,7 @@ void renderScene()
 	glUniform3f(glGetUniformLocation(programSun, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 
 	//ustalanie pozycji s³oñc (lightPos)
-	glm::vec3 sunPos = glm::vec3(10.0f, 0.0f, -5.0f);
-	glm::vec3 sunPos2 = glm::vec3(25.0f, -1.0f, 10.0f);
+
 
 	//rysowanie s³oñc
 	glm::mat4 sunModelMatrix = glm::mat4(1.0f);
@@ -250,26 +262,35 @@ void renderScene()
 	sunModelMatrix2 = glm::translate(sunModelMatrix2, sunPos2);
 	drawObjectTexture(programSun, sphereContext, sunModelMatrix2, glm::vec3(0.9f, 0.9f, 2.0f), sunTexture);
 
-
-
 	glUseProgram(programTex);
-	
+
+
 
 	lights[0].position = sunPos;
 	lights[1].position = sunPos2;
+
+	lights[2].position = cameraPos + cameraDir * 0.6f + glm::vec3(0, -0.25f, 0);
+	lights[2].color = glm::vec3(1.0f, 0.0f, 0.0f);
+	
 	for (int i = 0; i < lights.size(); i++)
 	{
 		std::string col = "pointLights[" + std::to_string(i) + "].color";
 		std::string pos = "pointLights[" + std::to_string(i) + "].position";
+		std::string ins = "pointLights[" + std::to_string(i) + "].intensity";
 		glUniform3f(glGetUniformLocation(programTex, col.c_str()), lights[i].color.x, lights[i].color.y, lights[i].color.z);
 		glUniform3f(glGetUniformLocation(programTex, pos.c_str()), lights[i].position.x, lights[i].position.y, lights[i].position.z);
+		glUniform1f(glGetUniformLocation(programTex, ins.c_str()), lights[i].intensity);
 	}
 
 	glUniform3f(glGetUniformLocation(programTex, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 
+
 	//rysowanie statku
 	glm::mat4 shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.6f + glm::vec3(0, -0.25f, 0)) * glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.0001f));
 	drawFromAssimpModel(programTex, corvette, shipModelMatrix, glm::vec3(1));
+
+
+
 
 	//rysowanie Ziemi z ksiê¿ycem
 	glm::mat4 earth = drawPlanet(time / 5.0f, sunPos*glm::vec3(1.5f,1,1), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(-10.5f, 0.0f, -10.5f), glm::vec3(0.5f, 0.5f, 0.5f));
@@ -278,6 +299,8 @@ void renderScene()
 	drawObjectTexture(programTex, sphereContext, earth, glm::vec3(0.8f, 0.8f, 0.8f), earthTexture);
 	drawObjectTexture(programTex, sphereContext, moon, glm::vec3(0.9f, 1.0f, 0.9f), moonTexture);
 
+	if (engineLightTimer < 50) engineLightTimer++;
+	else lights[2].intensity = 0.0001;
 
 	glUseProgram(0);
 	glutSwapBuffers();
@@ -309,14 +332,22 @@ void init()
 	skyboxTexture = loadCubemap(faces);
 	
 	Light l1;
-	l1.position = glm::vec3(0.0f, 0.0f, 0.0f);
+	l1.position = sunPos;
 	l1.color = glm::vec3(0.8f, 0.8f, 0.7f);
+	l1.intensity = 3;
 	lights.push_back(l1);
 
 	Light l2;
-	l2.position = glm::vec3(5.0f, -1.0f, 10.0f);
+	l2.position = sunPos2;
 	l2.color = glm::vec3(0.5f, 0.5f, 0.5f);
+	l2.intensity = 3;
 	lights.push_back(l2);
+
+	Light l3;
+	l3.position = engineLight;
+	l3.color = glm::vec3(0.5f, 0.5f, 0.5f);
+	l3.intensity = 0.0001;
+	lights.push_back(l3);
 
 }
 
