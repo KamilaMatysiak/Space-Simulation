@@ -6,7 +6,7 @@ struct PointLight {
 	float intensity;
 };
 
-#define NR_POINT_LIGHTS 3
+#define NR_POINT_LIGHTS 5
 
 uniform vec3 objectColor;
 uniform vec3 lightPos;

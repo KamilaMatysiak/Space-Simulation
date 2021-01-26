@@ -97,6 +97,7 @@ void keyboard(unsigned char key, int x, int y)
 	{
 		cameraPos += cameraDir * moveSpeed;
 		lights[2].intensity = 0.001;
+		lights[3].intensity = 0.001;
 		engineLightTimer = 0;
 		break;
 	}
@@ -273,13 +274,13 @@ void renderScene()
 	lights[0].position = sunPos;
 	lights[1].position = sunPos2;
 
-	//lights[2].position = cameraPos + cameraDir * 0.5f + glm::vec3(0, -0.25f, 0);
-	//lights[2].position = glm::vec3(cameraPos.x + cameraDir.x * 0.5f +0.f , cameraPos.y-0.25f, cameraPos.z + cameraDir.z * 0.5f );
-	glm::mat4 engineLightPos = glm::translate(cameraPos + cameraDir * 0.3f + cameraSide * -0.5f + glm::vec3(0, -0.25f, 0)) * glm::rotate(-cameraAngle, glm::vec3(0, 1, 0));
-	lights[2].position = glm::vec3(engineLightPos[3][0], engineLightPos[3][1], engineLightPos[3][2]);
+	glm::mat4 shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.6f + glm::vec3(0, -0.25f, 0)) * glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.0001f));
+	glm::mat4 engineLeft = glm::translate(shipModelMatrix, glm::vec3(500,0,-1500));
+	lights[2].position = glm::vec3(engineLeft[3][0], engineLeft[3][1], engineLeft[3][2]);
 
+	glm::mat4 engineRight = glm::translate(shipModelMatrix, glm::vec3(-500, 0, -1500));
+	lights[3].position = glm::vec3(engineRight[3][0], engineRight[3][1], engineRight[3][2]);
 
-	lights[2].color = glm::vec3(1.0f, -0.0f, 0.0f);
 	
 	for (int i = 0; i < lights.size(); i++)
 	{
@@ -296,8 +297,8 @@ void renderScene()
 
 	//rysowanie statku
 	//glm::mat4 shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.6f + glm::vec3(0, -0.25f, 0)) * glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.0001f));
-	glm::mat4 shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.6f  + glm::vec3(0, -0.25f, 0)) * glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.0001f));
-drawFromAssimpModel(programTex, corvette, shipModelMatrix, glm::vec3(1));
+
+	drawFromAssimpModel(programTex, corvette, shipModelMatrix, glm::vec3(1));
 
 
 
@@ -310,7 +311,11 @@ drawFromAssimpModel(programTex, corvette, shipModelMatrix, glm::vec3(1));
 	drawObjectTexture(programTex, sphereContext, moon, glm::vec3(0.9f, 1.0f, 0.9f), moonTexture);
 
 	if (engineLightTimer < 50) engineLightTimer++;
-	else lights[2].intensity = 0.0001;
+	else
+	{
+		lights[2].intensity = 0.00001;
+		lights[3].intensity = 0.00001;
+	}
 
 	glUseProgram(0);
 	glutSwapBuffers();
@@ -355,9 +360,16 @@ void init()
 
 	Light l3;
 	l3.position = engineLight;
-	l3.color = glm::vec3(0.5f, 0.5f, 0.5f);
+	l3.color = glm::vec3(1.0f, -0.0f, 0.0f);
 	l3.intensity = 0.0001;
 	lights.push_back(l3);
+
+	Light l4;
+	l4.position = engineLight;
+	l4.color = glm::vec3(1.0f, -0.0f, 0.0f);
+	l4.intensity = 0.0001;
+	lights.push_back(l4);
+
 
 }
 
