@@ -1,4 +1,4 @@
-#include "glew.h"
+﻿#include "glew.h"
 #include "freeglut.h"
 #include "glm.hpp"
 #include "ext.hpp"
@@ -53,6 +53,8 @@ std::vector<Core::RenderContext> corvetteMeshes;
 float cameraAngle = 0;
 glm::vec3 cameraPos = glm::vec3(-6, 0, 0);
 glm::vec3 cameraDir;
+glm::vec3 cameraSide;
+
 
 glm::mat4 cameraMatrix, perspectiveMatrix;
 
@@ -89,8 +91,8 @@ void keyboard(unsigned char key, int x, int y)
 	float moveSpeed = 0.1f;
 	switch (key)
 	{
-	case 'z': cameraAngle -= angleSpeed; break;
-	case 'x': cameraAngle += angleSpeed; break;
+	case 'q': cameraAngle -= angleSpeed; break;
+	case 'e': cameraAngle += angleSpeed; break;
 	case 'w': 
 	{
 		cameraPos += cameraDir * moveSpeed;
@@ -101,8 +103,8 @@ void keyboard(unsigned char key, int x, int y)
 	case 's': cameraPos -= cameraDir * moveSpeed; break;
 	case 'd': cameraPos += glm::cross(cameraDir, glm::vec3(0, 1, 0)) * moveSpeed; break;
 	case 'a': cameraPos -= glm::cross(cameraDir, glm::vec3(0, 1, 0)) * moveSpeed; break;
-	case 'e': cameraPos += glm::cross(cameraDir, glm::vec3(1, 0, 0)) * moveSpeed; break;
-	case 'q': cameraPos -= glm::cross(cameraDir, glm::vec3(1, 0, 0)) * moveSpeed; break;
+	case 'z': cameraPos += glm::cross(cameraDir, glm::vec3(0, 0, 1)) * moveSpeed; break;
+	case 'x': cameraPos -= glm::cross(cameraDir, glm::vec3(0, 0, 1)) * moveSpeed; break;
 	}
 }
 
@@ -111,6 +113,8 @@ glm::mat4 createCameraMatrix()
 	// Obliczanie kierunku patrzenia kamery (w plaszczyznie x-z) przy uzyciu zmiennej cameraAngle kontrolowanej przez klawisze.
 	cameraDir = glm::vec3(cosf(cameraAngle), 0.0f, sinf(cameraAngle));
 	glm::vec3 up = glm::vec3(0, 1, 0);
+
+	cameraSide = glm::cross(cameraDir,up);
 
 	return Core::createViewMatrix(cameraPos, cameraDir, up);
 }
@@ -249,10 +253,10 @@ void renderScene()
 	glUseProgram(programSun);
 	glUniform3f(glGetUniformLocation(programSun, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 
-	//ustalanie pozycji s�o�c (lightPos)
+	//ustalanie pozycji s³oñc (lightPos)
 
 
-	//rysowanie s�o�c
+	//rysowanie s³oñc
 	glm::mat4 sunModelMatrix = glm::mat4(1.0f);
 	sunModelMatrix = glm::translate(sunModelMatrix, sunPos);
 	sunModelMatrix = glm::scale(sunModelMatrix, glm::vec3(3.0f, 3.0f, 3.0f));
@@ -269,8 +273,13 @@ void renderScene()
 	lights[0].position = sunPos;
 	lights[1].position = sunPos2;
 
-	lights[2].position = cameraPos + cameraDir * 0.6f + glm::vec3(0, -0.25f, 0);
-	lights[2].color = glm::vec3(1.0f, 0.0f, 0.0f);
+	//lights[2].position = cameraPos + cameraDir * 0.5f + glm::vec3(0, -0.25f, 0);
+	//lights[2].position = glm::vec3(cameraPos.x + cameraDir.x * 0.5f +0.f , cameraPos.y-0.25f, cameraPos.z + cameraDir.z * 0.5f );
+	glm::mat4 engineLightPos = glm::translate(cameraPos + cameraDir * 0.3f + cameraSide * -0.5f + glm::vec3(0, -0.25f, 0)) * glm::rotate(-cameraAngle, glm::vec3(0, 1, 0));
+	lights[2].position = glm::vec3(engineLightPos[3][0], engineLightPos[3][1], engineLightPos[3][2]);
+
+
+	lights[2].color = glm::vec3(1.0f, -0.0f, 0.0f);
 	
 	for (int i = 0; i < lights.size(); i++)
 	{
@@ -286,13 +295,14 @@ void renderScene()
 
 
 	//rysowanie statku
-	glm::mat4 shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.6f + glm::vec3(0, -0.25f, 0)) * glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.0001f));
-	drawFromAssimpModel(programTex, corvette, shipModelMatrix, glm::vec3(1));
+	//glm::mat4 shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.6f + glm::vec3(0, -0.25f, 0)) * glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.0001f));
+	glm::mat4 shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.6f  + glm::vec3(0, -0.25f, 0)) * glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.0001f));
+drawFromAssimpModel(programTex, corvette, shipModelMatrix, glm::vec3(1));
 
 
 
 
-	//rysowanie Ziemi z ksi�ycem
+	//rysowanie Ziemi z ksiê¿ycem
 	glm::mat4 earth = drawPlanet(time / 5.0f, sunPos*glm::vec3(1.5f,1,1), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(-10.5f, 0.0f, -10.5f), glm::vec3(0.5f, 0.5f, 0.5f));
 	glm::mat4 moon = drawMoon(earth, time/2.0f, glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0, 1, 1), glm::vec3(1.5f, 1.0f, 1.0f), glm::vec3(0.3f, 0.3f, 0.3f));
 	earth = glm::rotate(earth, time/3.0f, glm::vec3(0.0f, 0.0f, 1.0f));
@@ -386,6 +396,12 @@ int main(int argc, char** argv)
 
 	init();
 	glutKeyboardFunc(keyboard);
+
+	//to sprawia, że obiekty ukryte przed kamerą  nie są renderowane
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_BACK);
+	glFrontFace(GL_CW);
+
 	glutDisplayFunc(renderScene);
 	glutIdleFunc(idle);
 
