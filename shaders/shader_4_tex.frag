@@ -42,7 +42,7 @@ void main()
 		vec3 diffuse = pointLights[i].color * diff * distance * pointLights[i].intensity;
 		vec3 specular = spec * pointLights[i].color * (pointLights[i].intensity/dist);
 
-		vec3 texture = vec3(textureColor.x, textureColor.y, textureColor.z) * pointLights[i].color;
+		vec3 texture = vec3(textureColor.x, textureColor.y, textureColor.z); // * pointLights[i].color;
 		fragColor += mix(texture,texture*diffuse+vec3(1)*specular,0.9);
 	}
 

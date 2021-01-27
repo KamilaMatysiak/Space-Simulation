@@ -60,7 +60,6 @@ glm::mat4 cameraMatrix, perspectiveMatrix;
 
 glm::vec3 sunPos = glm::vec3(10.0f, 0.0f, -5.0f);
 glm::vec3 sunPos2 = glm::vec3(25.0f, -1.0f, 10.0f);
-glm::vec3 engineLight = cameraPos + cameraDir * 0.6f + glm::vec3(0, -0.25f, 0);
 
 
 struct Light {
@@ -349,24 +348,24 @@ void init()
 	Light l1;
 	l1.position = sunPos;
 	l1.color = glm::vec3(0.8f, 0.8f, 0.7f);
-	l1.intensity = 3;
+	l1.intensity = 2;
 	lights.push_back(l1);
 
 	Light l2;
 	l2.position = sunPos2;
 	l2.color = glm::vec3(0.5f, 0.5f, 0.5f);
-	l2.intensity = 3;
+	l2.intensity = 2;
 	lights.push_back(l2);
 
 	Light l3;
-	l3.position = engineLight;
-	l3.color = glm::vec3(1.0f, -0.0f, 0.0f);
+	l3.position = glm::vec3(0);
+	l3.color = glm::vec3(1.0f, 0.0f, 0.0f);
 	l3.intensity = 0.0001;
 	lights.push_back(l3);
 
 	Light l4;
-	l4.position = engineLight;
-	l4.color = glm::vec3(1.0f, -0.0f, 0.0f);
+	l4.position = glm::vec3(0);
+	l4.color = glm::vec3(1.0f, 0.0f, 0.0f);
 	l4.intensity = 0.0001;
 	lights.push_back(l4);
 
