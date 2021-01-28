@@ -9,7 +9,6 @@ struct PointLight {
 #define NR_POINT_LIGHTS 5
 
 uniform vec3 objectColor;
-uniform vec3 lightPos;
 uniform vec3 cameraPos;
 uniform sampler2D colorTexture;
 uniform PointLight pointLights[NR_POINT_LIGHTS];
@@ -23,7 +22,7 @@ in vec2 vTexCoord;
 void main()
 {
 	vec3 fragColor = vec3(0,0,0);
-	vec4 textureColor = texture2D(colorTexture, -vTexCoord);
+	vec4 textureColor = texture2D(colorTexture, vTexCoord);
 	vec4 ambient = vec4(0.1, 0.1, 0.1, 1.0) * textureColor;
 	vec3 normal = normalize(interpNormal);
 	for(int i = 0; i < NR_POINT_LIGHTS; i++)

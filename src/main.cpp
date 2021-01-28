@@ -48,7 +48,8 @@ Core::RenderContext shipContext;
 
 //assimp
 std::shared_ptr<Model> corvette;
-std::vector<Core::RenderContext> corvetteMeshes;
+//std::vector<Core::RenderContext> corvetteMeshes;
+std::shared_ptr<Model> crewmate;
 
 float cameraAngle = 0;
 glm::vec3 cameraPos = glm::vec3(-6, 0, 0);
@@ -299,6 +300,9 @@ void renderScene()
 
 	drawFromAssimpModel(programTex, corvette, shipModelMatrix, glm::vec3(1));
 
+	glm::mat4 crewmateModelMatrix = glm::translate(glm::vec3(0, 1, 1)) * glm::rotate(time/2, glm::vec3(1, 0, 1)) * glm::scale(glm::vec3(0.1));
+	drawFromAssimpModel(programTex, crewmate, crewmateModelMatrix, glm::vec3(1));
+
 
 
 
@@ -332,6 +336,7 @@ void init()
 
 	
 	corvette = std::make_shared<Model>("models/Corvette-F3.obj");
+	crewmate = std::make_shared<Model>("models/space_humster.obj");
 	//shipModel = obj::loadModelFromFile("models/spaceship.obj");
 	sphereModel = obj::loadModelFromFile("models/sphere.obj");
 	cubeModel = obj::loadModelFromFile("models/cube.obj");
@@ -411,7 +416,7 @@ int main(int argc, char** argv)
 	//to sprawia, że obiekty ukryte przed kamerą  nie są renderowane
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
-	glFrontFace(GL_CW);
+//	glFrontFace(GL_CW);
 
 	glutDisplayFunc(renderScene);
 	glutIdleFunc(idle);
