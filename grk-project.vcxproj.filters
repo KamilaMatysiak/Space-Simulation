@@ -30,40 +30,28 @@
     <None Include="shaders\shader_tex.vert">
       <Filter>Shader Files</Filter>
     </None>
-    <None Include="shaders\shader_4_tex.frag">
-      <Filter>Shader Files</Filter>
-    </None>
-    <None Include="shaders\shader_4_tex.vert">
-      <Filter>Shader Files</Filter>
-    </None>
-    <None Include="shaders\shader_4_sun.frag">
-      <Filter>Shader Files</Filter>
-    </None>
-    <None Include="shaders\shader_4_sun.vert">
-      <Filter>Shader Files</Filter>
-    </None>
     <None Include="shaders\shader_skybox.frag">
       <Filter>Shader Files</Filter>
     </None>
     <None Include="shaders\shader_skybox.vert">
       <Filter>Shader Files</Filter>
     </None>
-    <None Include="shaders\shader_bloom2.frag">
+    <None Include="shaders\shader_bloom.frag">
       <Filter>Shader Files</Filter>
     </None>
-    <None Include="shaders\shader_bloom2.vert">
+    <None Include="shaders\shader_bloom.vert">
       <Filter>Shader Files</Filter>
     </None>
-    <None Include="shaders\shader_bloom3.frag">
+    <None Include="shaders\shader_blur.frag">
       <Filter>Shader Files</Filter>
     </None>
-    <None Include="shaders\shader_bloom3.vert">
+    <None Include="shaders\shader_blur.vert">
       <Filter>Shader Files</Filter>
     </None>
-    <None Include="shaders\shader_bloom1.frag">
+    <None Include="shaders\shader_sun.frag">
       <Filter>Shader Files</Filter>
     </None>
-    <None Include="shaders\shader_bloom1.vert">
+    <None Include="shaders\shader_sun.vert">
       <Filter>Shader Files</Filter>
     </None>
   </ItemGroup>

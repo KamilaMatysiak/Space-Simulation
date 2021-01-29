@@ -8,5 +8,5 @@ uniform mat4 transformation;
 void main()
 {
     TexCoords = vertexPosition;
-    gl_Position = transformation * vec4(vertexPosition, 1.0);
+    gl_Position = (transformation * vec4(vertexPosition, 1.0)).xyww;
 }  
