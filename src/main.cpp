@@ -18,14 +18,29 @@
 #include <assimp/postprocess.h>
 #include "model.h"
 
+int SCR_WIDTH = 1240;
+int SCR_HEIGHT = 720;
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 //int winId;
-GLuint program;
 GLuint programTex;
 GLuint programSun;
 GLuint programSkybox;
+
+
+
+
+GLuint programBloom1;
+GLuint programBloom2;
+GLuint programBloom3;
+
+unsigned int pingpongFBO[2];
+unsigned int pingpongColorbuffers[2];
+unsigned int FBO;
+unsigned int colorBuffers[2];
+
+
 Core::Shader_Loader shaderLoader;
 
 Core::RenderContext armContext;
@@ -91,8 +106,22 @@ void keyboard(unsigned char key, int x, int y)
 	float moveSpeed = 0.1f;
 	switch (key)
 	{
-	case 'q': cameraAngle -= angleSpeed; break;
-	case 'e': cameraAngle += angleSpeed; break;
+	case 'q': 
+	{
+		cameraAngle -= angleSpeed;
+		lights[3].intensity = 0.001;
+		engineLightTimer = 0;
+		break;
+	}
+
+	case 'e': 
+	{
+		cameraAngle += angleSpeed;
+		lights[2].intensity = 0.001;
+		engineLightTimer = 0;
+		break;
+	}
+
 	case 'w': 
 	{
 		cameraPos += cameraDir * moveSpeed;
@@ -107,6 +136,37 @@ void keyboard(unsigned char key, int x, int y)
 	case 'z': cameraPos += glm::cross(cameraDir, glm::vec3(0, 0, 1)) * moveSpeed; break;
 	case 'x': cameraPos -= glm::cross(cameraDir, glm::vec3(0, 0, 1)) * moveSpeed; break;
 	}
+}
+
+// renderQuad() renders a 1x1 XY quad in NDC
+// -----------------------------------------
+unsigned int quadVAO = 0;
+unsigned int quadVBO;
+void renderQuad()
+{
+	if (quadVAO == 0)
+	{
+		float quadVertices[] = {
+			// positions        // texture Coords
+			-1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
+			-1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
+			 1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
+			 1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
+		};
+		// setup plane VAO
+		glGenVertexArrays(1, &quadVAO);
+		glGenBuffers(1, &quadVBO);
+		glBindVertexArray(quadVAO);
+		glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+		glEnableVertexAttribArray(1);
+		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+	}
+	glBindVertexArray(quadVAO);
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	glBindVertexArray(0);
 }
 
 glm::mat4 createCameraMatrix()
@@ -191,15 +251,17 @@ unsigned int loadCubemap(std::vector<std::string> faces)
 void drawSkybox(GLuint program, Core::RenderContext context, GLuint texID)
 {
 	glUseProgram(program);
+	glDepthFunc(GL_LEQUAL);
 	glm::mat4 transformation = perspectiveMatrix * glm::mat4(glm::mat3(cameraMatrix));
 	glUniformMatrix4fv(glGetUniformLocation(program, "transformation"), 1, GL_FALSE, (float*)&transformation);
-	glDepthMask(GL_FALSE);
+	//glDepthMask(GL_FALSE);
 	//Core::SetActiveTexture(texID, "skybox", program, 0);
 	glUniform1i(glGetUniformLocation(program, "skybox"), 0);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, texID);
 	Core::DrawContext(context);
-	glDepthMask(GL_TRUE);
+	glDepthFunc(GL_LESS);
+	//glDepthMask(GL_TRUE);
 	glUseProgram(0);
 }
 
@@ -246,26 +308,22 @@ void renderScene()
 	perspectiveMatrix = Core::createPerspectiveMatrix(0.01f, 1000.0f, frustumScale);
 	float time = glutGet(GLUT_ELAPSED_TIME) / 1000.f;
 
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	drawSkybox(programSkybox, cubeContext, skyboxTexture);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 	
-	glUseProgram(programSun);
-	glUniform3f(glGetUniformLocation(programSun, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 
-	//ustalanie pozycji s³oñc (lightPos)
-
-
-	//rysowanie s³oñc
+	//ustalanie pozycji slonc (lightPos)
 	glm::mat4 sunModelMatrix = glm::mat4(1.0f);
 	sunModelMatrix = glm::translate(sunModelMatrix, sunPos);
 	sunModelMatrix = glm::scale(sunModelMatrix, glm::vec3(3.0f, 3.0f, 3.0f));
-	drawObjectTexture(programSun, sphereContext, sunModelMatrix, glm::vec3(1.5f, 1.8f, 1.8f), sunTexture);
 
 	glm::mat4 sunModelMatrix2 = glm::mat4(1.0f);
 	sunModelMatrix2 = glm::translate(sunModelMatrix2, sunPos2);
-	drawObjectTexture(programSun, sphereContext, sunModelMatrix2, glm::vec3(0.9f, 0.9f, 2.0f), sunTexture);
 
 	glUseProgram(programTex);
 
@@ -313,12 +371,56 @@ void renderScene()
 	drawObjectTexture(programTex, sphereContext, earth, glm::vec3(0.8f, 0.8f, 0.8f), earthTexture);
 	drawObjectTexture(programTex, sphereContext, moon, glm::vec3(0.9f, 1.0f, 0.9f), moonTexture);
 
+
+
+	//rysowanie sloñc
+
+	glUseProgram(programBloom1);
+	glUniform3f(glGetUniformLocation(programBloom1, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
+	drawObjectTexture(programBloom1, sphereContext, sunModelMatrix, glm::vec3(3.5f, 3.8f, 3.8f), sunTexture);
+
+	drawObjectTexture(programBloom1, sphereContext, sunModelMatrix2, glm::vec3(0.9f, 0.9f, 2.0f), sunTexture);
+
+
+	drawSkybox(programSkybox, cubeContext, skyboxTexture);
+
+	//zabawa z bloomem
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	bool horizontal = true, first_iteration = true;
+	unsigned int amount = 10;
+	glUseProgram(programBloom2);
+	for (unsigned int i = 0; i < amount; i++)
+	{
+		glBindFramebuffer(GL_FRAMEBUFFER, pingpongFBO[horizontal]);
+		//shaderBlur.setInt("horizontal", horizontal);
+		glUniform1i(glGetUniformLocation(programBloom2, "horizontal"), horizontal);
+		glBindTexture(GL_TEXTURE_2D, first_iteration ? colorBuffers[1] : pingpongColorbuffers[!horizontal]);  // bind texture of other framebuffer (or scene if first iteration)
+		renderQuad();
+		horizontal = !horizontal;
+		if (first_iteration)
+			first_iteration = false;
+	}
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	// 3. now render floating point color buffer to 2D quad and tonemap HDR colors to default framebuffer's (clamped) color range
+	// --------------------------------------------------------------------------------------------------------------------------
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glUseProgram(programBloom3);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, colorBuffers[0]);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, pingpongColorbuffers[!horizontal]);
+	renderQuad();
+
+
 	if (engineLightTimer < 50) engineLightTimer++;
 	else
 	{
 		lights[2].intensity = 0.00001;
 		lights[3].intensity = 0.00001;
 	}
+
 
 	glUseProgram(0);
 	glutSwapBuffers();
@@ -327,12 +429,23 @@ void renderScene()
 void init()
 {
 	glEnable(GL_DEPTH_TEST);
-	program = shaderLoader.CreateProgram("shaders/shader_4_1.vert", "shaders/shader_4_1.frag");
-	programTex = shaderLoader.CreateProgram("shaders/shader_4_tex.vert", "shaders/shader_4_tex.frag");
+	programTex = shaderLoader.CreateProgram("shaders/shader_tex.vert", "shaders/shader_tex.frag");
 	programSun = shaderLoader.CreateProgram("shaders/shader_4_sun.vert", "shaders/shader_4_sun.frag");
 	programSkybox = shaderLoader.CreateProgram("shaders/shader_skybox.vert", "shaders/shader_skybox.frag");
 
-	
+
+
+
+	programBloom1 = shaderLoader.CreateProgram("shaders/shader_bloom1.vert", "shaders/shader_bloom1.frag");
+	programBloom2 = shaderLoader.CreateProgram("shaders/shader_bloom2.vert", "shaders/shader_bloom2.frag");
+	programBloom3 = shaderLoader.CreateProgram("shaders/shader_bloom3.vert", "shaders/shader_bloom3.frag");
+
+	glUseProgram(programBloom2);
+	glUniform1i(glGetUniformLocation(programBloom2, "image"), 0);
+	glUseProgram(programBloom3);
+	glUniform1i(glGetUniformLocation(programBloom3, "scene"), 0);
+	glUniform1i(glGetUniformLocation(programBloom3, "bloomBlur"), 1);
+
 
 	
 	corvette = std::make_shared<Model>("models/Corvette-F3.obj");
@@ -350,6 +463,63 @@ void init()
 	moonTexture = Core::LoadTexture("textures/moon.png");
 	skyboxTexture = loadCubemap(faces);
 	
+
+
+	glGenFramebuffers(1, &FBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+
+	glGenTextures(2, colorBuffers);
+	for (unsigned int i = 0; i < 2; i++)
+	{
+		glBindTexture(GL_TEXTURE_2D, colorBuffers[i]);
+		glTexImage2D(
+			GL_TEXTURE_2D, 0, GL_RGBA16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL
+		);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		// attach texture to framebuffer
+		glFramebufferTexture2D(
+			GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, colorBuffers[i], 0
+		);
+	}
+	// create and attach depth buffer (renderbuffer)
+	unsigned int rboDepth;
+	glGenRenderbuffers(1, &rboDepth);
+	glBindRenderbuffer(GL_RENDERBUFFER, rboDepth);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, SCR_WIDTH, SCR_HEIGHT);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rboDepth);
+	//
+	// tell OpenGL which color attachments we'll use (of this framebuffer) for rendering 
+	unsigned int attachments[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+	glDrawBuffers(2, attachments);
+	// finally check if framebuffer is complete
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		std::cout << "Framebuffer not complete!" << std::endl;
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	// ping-pong-framebuffer for blurring
+	glGenFramebuffers(2, pingpongFBO);
+	glGenTextures(2, pingpongColorbuffers);
+	for (unsigned int i = 0; i < 2; i++)
+	{
+		glBindFramebuffer(GL_FRAMEBUFFER, pingpongFBO[i]);
+		glBindTexture(GL_TEXTURE_2D, pingpongColorbuffers[i]);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // we clamp to the edge as the blur filter would otherwise sample repeated texture values!
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pingpongColorbuffers[i], 0);
+		// also check if framebuffers are complete (no need for depth buffer)
+		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+			std::cout << "Framebuffer not complete!" << std::endl;
+	}
+
+
+
+
 	Light l1;
 	l1.position = sunPos;
 	l1.color = glm::vec3(0.8f, 0.8f, 0.7f);
@@ -379,7 +549,7 @@ void init()
 
 void shutdown()
 {
-	shaderLoader.DeleteProgram(program);
+
 }
 
 void onReshape(int width, int height)
@@ -389,6 +559,8 @@ void onReshape(int width, int height)
 	// Oblicz odpowiednio globalna zmienna "frustumScale".
 	// Ustaw odpowiednio viewport - zobacz:
 	// https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glViewport.xhtml
+	SCR_WIDTH = width;
+	SCR_HEIGHT = height;
 	frustumScale = (float)width / (float)height;
 	glViewport(0, 0, width, height);
 }
@@ -404,7 +576,7 @@ int main(int argc, char** argv)
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH | GLUT_MULTISAMPLE);
 	glEnable(GL_MULTISAMPLE);
 	glutInitWindowPosition(100, 200);
-	glutInitWindowSize(1240, 720);
+	glutInitWindowSize(SCR_WIDTH, SCR_HEIGHT);
 	glutCreateWindow("GRK-PROJECT WIP");
 	//winId = glutCreateWindow("OpenGL + PhysX");
 	//glutFullScreen();

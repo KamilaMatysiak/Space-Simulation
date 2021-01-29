@@ -1,5 +1,8 @@
 #version 430 core
 
+layout (location = 0) out vec4 FragColor;
+layout (location = 1) out vec4 BrightColor;
+
 struct PointLight {
 	vec3 position;
 	vec3 color;
@@ -45,5 +48,6 @@ void main()
 		fragColor += mix(texture,texture*diffuse+vec3(1)*specular,0.9);
 	}
 
-	gl_FragColor = vec4(fragColor, 1.0) + ambient;
+    BrightColor = vec4(0.0, 0.0, 0.0, 1.0);
+	FragColor = vec4(fragColor, 1.0) + ambient;
 }

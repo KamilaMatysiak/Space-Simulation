@@ -48,10 +48,22 @@
     <None Include="shaders\shader_skybox.vert">
       <Filter>Shader Files</Filter>
     </None>
-    <None Include="shaders\shader_bloom.frag">
+    <None Include="shaders\shader_bloom2.frag">
       <Filter>Shader Files</Filter>
     </None>
-    <None Include="shaders\shader_bloom.vert">
+    <None Include="shaders\shader_bloom2.vert">
+      <Filter>Shader Files</Filter>
+    </None>
+    <None Include="shaders\shader_bloom3.frag">
+      <Filter>Shader Files</Filter>
+    </None>
+    <None Include="shaders\shader_bloom3.vert">
+      <Filter>Shader Files</Filter>
+    </None>
+    <None Include="shaders\shader_bloom1.frag">
+      <Filter>Shader Files</Filter>
+    </None>
+    <None Include="shaders\shader_bloom1.vert">
       <Filter>Shader Files</Filter>
     </None>
   </ItemGroup>
