@@ -478,7 +478,7 @@ void init()
 	Light l1;
 	l1.position = sunPos;
 	l1.color = glm::vec3(0.8f, 0.8f, 0.7f);
-	l1.intensity = 2;
+	l1.intensity = 7;
 	lights.push_back(l1);
 
 	Light l2;
