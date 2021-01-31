@@ -17,13 +17,14 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include "model.h"
+#include <WinUser.h>
 
 int SCR_WIDTH = 1240;
 int SCR_HEIGHT = 720;
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
-//int winId;
+int winId;
 GLuint programTex;
 GLuint programSkybox;
 GLuint programSun;
@@ -130,6 +131,7 @@ void keyboard(unsigned char key, int x, int y)
 	case 'a': cameraPos -= glm::cross(cameraDir, glm::vec3(0, 1, 0)) * moveSpeed; break;
 	case 'z': cameraPos += glm::cross(cameraDir, glm::vec3(0, 0, 1)) * moveSpeed; break;
 	case 'x': cameraPos -= glm::cross(cameraDir, glm::vec3(0, 0, 1)) * moveSpeed; break;
+	case 27: glutDestroyWindow(winId); break;
 	}
 }
 
@@ -520,15 +522,19 @@ void idle()
 
 int main(int argc, char** argv)
 {
+	int screenWidth = GetSystemMetrics(SM_CXSCREEN);
+	int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+	SCR_WIDTH = screenWidth; SCR_HEIGHT = screenHeight;
+
 	glutInit(&argc, argv);
 	glutSetOption(GLUT_MULTISAMPLE, 8);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH | GLUT_MULTISAMPLE);
 	glEnable(GL_MULTISAMPLE);
-	glutInitWindowPosition(100, 200);
+	glutInitWindowPosition(0, 0);
 	glutInitWindowSize(SCR_WIDTH, SCR_HEIGHT);
-	glutCreateWindow("GRK-PROJECT WIP");
-	//winId = glutCreateWindow("OpenGL + PhysX");
-	//glutFullScreen();
+	//glutCreateWindow("GRK-PROJECT WIP");
+	winId = glutCreateWindow("GRK-PROJECT WIP");
+	glutFullScreen();
 	glewInit();
 
 	init();
