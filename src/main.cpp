@@ -316,7 +316,15 @@ void renderScene()
 	glm::mat4 sunModelMatrix2 = glm::mat4(1.0f);
 	sunModelMatrix2 = glm::translate(sunModelMatrix2, sunPos2);
 
-	glm::mat4 crewmateModelMatrix = glm::translate(glm::vec3(0, 1, 1)) * glm::rotate(time / 2, glm::vec3(1, 0, 1)) * glm::scale(glm::vec3(0.1));
+
+	glm::mat4 earth = drawPlanet(time / 5.0f, sunPos*glm::vec3(1.5f, 1, 1), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(-10.5f, 0.0f, -10.5f), glm::vec3(0.5f, 0.5f, 0.5f));
+	glm::mat4 moon = drawMoon(earth, time / 2.0f, glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0, 1, 1), glm::vec3(1.5f, 1.0f, 1.0f), glm::vec3(0.3f, 0.3f, 0.3f));
+	earth = glm::rotate(earth, time / 3.0f, glm::vec3(0.0f, 0.0f, 1.0f));
+
+	glm::mat4 planet1 = drawPlanet(time / 5.0f, sunPos2, glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(-6.5f, 0.0f, -6.5f), glm::vec3(0.4f, 0.4f, 0.4f));
+	planet1 = glm::rotate(planet1, time / 3.0f, glm::vec3(0.0f, 0.0f, 1.0f));
+
+	glm::mat4 crewmateModelMatrix = glm::translate(glm::vec3(0, 1, 1)) * glm::rotate(time / 2, glm::vec3(1, 0, 1)) * glm::scale(glm::vec3(0.01));
 	glm::mat4 shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.6f + glm::vec3(0, -0.25f, 0)) * glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.0001f));
 
 
@@ -346,12 +354,9 @@ void renderScene()
 	drawFromAssimpModel(programTex, corvette, shipModelMatrix, glm::vec3(1));
 	drawFromAssimpModel(programTex, crewmate, crewmateModelMatrix, glm::vec3(1));
 
-	//rysowanie Ziemi z ksiezycem
-	glm::mat4 earth = drawPlanet(time / 5.0f, sunPos*glm::vec3(1.5f,1,1), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(-10.5f, 0.0f, -10.5f), glm::vec3(0.5f, 0.5f, 0.5f));
-	glm::mat4 moon = drawMoon(earth, time/2.0f, glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0, 1, 1), glm::vec3(1.5f, 1.0f, 1.0f), glm::vec3(0.3f, 0.3f, 0.3f));
-	earth = glm::rotate(earth, time/3.0f, glm::vec3(0.0f, 0.0f, 1.0f));
 	drawObjectTexture(programTex, sphereContext, earth, glm::vec3(0.8f, 0.8f, 0.8f), earthTexture);
 	drawObjectTexture(programTex, sphereContext, moon, glm::vec3(0.9f, 1.0f, 0.9f), moonTexture);
+	drawObjectTexture(programTex, sphereContext, planet1, glm::vec3(0.4f, 0.2f, 0.9f), moonTexture);
 
 	glUseProgram(programSun);
 	glUniform3f(glGetUniformLocation(programSun, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
