@@ -43,16 +43,14 @@ static GLubyte* g_particule_color_data;
 GLuint particle_vertex_buffer;
 GLuint particles_position_buffer;
 GLuint particles_color_buffer;
-GLuint CameraRight_worldspace_ID;
-GLuint CameraUp_worldspace_ID;
-GLuint ViewProjMatrixID;
-GLuint TextureParticle;
 
 Core::Shader_Loader shaderLoader;
 
 Core::RenderContext armContext;
 std::vector<Core::Node> arm;
 int ballIndex;
+bool bothEngines = true;
+
 
 GLuint textureShip_normals;
 GLuint sunTexture;
@@ -131,7 +129,7 @@ struct Light {
 	float intensity;
 };
 
-int engineLightTimer;
+int engineLightTimer = 50;
 
 //wczytywanie skyboxa (musi byc jpg!)
 std::vector<std::string> faces
@@ -309,6 +307,63 @@ void drawSkybox(GLuint program, Core::RenderContext context, GLuint texID)
 	glUseProgram(0);
 }
 
+void drawParticles(int ParticlesCount, glm::mat4 &transformation)
+{
+	glBindBuffer(GL_ARRAY_BUFFER, particles_position_buffer);
+	glBufferData(GL_ARRAY_BUFFER, MaxParticles * 4 * sizeof(GLfloat), NULL, GL_STREAM_DRAW); // Buffer orphaning, a common way to improve streaming perf. See above link for details.
+	glBufferSubData(GL_ARRAY_BUFFER, 0, ParticlesCount * sizeof(GLfloat) * 4, g_particule_position_size_data);
+
+	glBindBuffer(GL_ARRAY_BUFFER, particles_color_buffer);
+	glBufferData(GL_ARRAY_BUFFER, MaxParticles * 4 * sizeof(GLubyte), NULL, GL_STREAM_DRAW); // Buffer orphaning, a common way to improve streaming perf. See above link for details.
+	glBufferSubData(GL_ARRAY_BUFFER, 0, ParticlesCount * sizeof(GLubyte) * 4, g_particule_color_data);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, particleTexture);
+	glUniform1i(glGetUniformLocation(programParticle, "sprite"), 0);
+	glUniform3f(glGetUniformLocation(programParticle, "CameraRight_worldspace"), cameraSide.x, cameraSide.y, cameraSide.z);
+	glUniform3f(glGetUniformLocation(programParticle, "CameraUp_worldspace"), 0, 1, 0);
+
+	glUniformMatrix4fv(glGetUniformLocation(programParticle, "VP"), 1, GL_FALSE, &transformation[0][0]);
+
+	glEnableVertexAttribArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, particle_vertex_buffer);
+	glVertexAttribPointer(
+		0,                  // attribute. No particular reason for 0, but must match the layout in the shader.
+		3,                  // size
+		GL_FLOAT,           // type
+		GL_FALSE,           // normalized?
+		0,                  // stride
+		(void*)0            // array buffer offset
+	);
+	glEnableVertexAttribArray(1);
+	glBindBuffer(GL_ARRAY_BUFFER, particles_position_buffer);
+	glVertexAttribPointer(
+		1,                                // attribute. No particular reason for 1, but must match the layout in the shader.
+		4,                                // size : x + y + z + size => 4
+		GL_FLOAT,                         // type
+		GL_FALSE,                         // normalized?
+		0,                                // stride
+		(void*)0                          // array buffer offset
+	);
+	glEnableVertexAttribArray(2);
+	glBindBuffer(GL_ARRAY_BUFFER, particles_color_buffer);
+	glVertexAttribPointer(
+		2,                                // attribute. No particular reason for 1, but must match the layout in the shader.
+		4,                                // size : r + g + b + a => 4
+		GL_UNSIGNED_BYTE,                 // type
+		GL_TRUE,                          // normalized?    *** YES, this means that the unsigned char[4] will be accessible with a vec4 (floats) in the shader ***
+		0,                                // stride
+		(void*)0                          // array buffer offset
+	);
+	glVertexAttribDivisor(0, 0); // particles vertices : always reuse the same 4 vertices -> 0
+	glVertexAttribDivisor(1, 1); // positions : one per quad (its center)                 -> 1
+	glVertexAttribDivisor(2, 1); // color : one per quad                                  -> 1
+	glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, ParticlesCount);
+
+	glDisableVertexAttribArray(0);
+	glDisableVertexAttribArray(1);
+	glDisableVertexAttribArray(2);
+}
+
 //Textures
 void drawObjectTexture(GLuint program, Core::RenderContext context, glm::mat4 modelMatrix, glm::vec3 texture, GLuint texID)
 {
@@ -377,10 +432,10 @@ void renderScene()
 	lights[0].position = sunPos;
 	lights[1].position = sunPos2;
 
-	glm::mat4 engineLeft = glm::translate(shipModelMatrix, glm::vec3(700, 0, -1500));
+	glm::mat4 engineLeft = glm::translate(shipModelMatrix, glm::vec3(450, 0, -1500));
 	lights[2].position = glm::vec3(engineLeft[3][0], engineLeft[3][1], engineLeft[3][2]);
 
-	glm::mat4 engineRight = glm::translate(shipModelMatrix, glm::vec3(-700, 0, -1500));
+	glm::mat4 engineRight = glm::translate(shipModelMatrix, glm::vec3(-450, 0, -1500));
 	lights[3].position = glm::vec3(engineRight[3][0], engineRight[3][1], engineRight[3][2]);
 
 	for (int i = 0; i < lights.size(); i++)
@@ -415,41 +470,62 @@ void renderScene()
 	glUseProgram(programParticle);
 	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	double currentTime = glutGet(GLUT_ELAPSED_TIME) / 1000.f;
-	double delta = currentTime - lastTime;
-	lastTime = currentTime;
-	glm::mat4 ProjectionMatrix = perspectiveMatrix;// *glm::mat4(glm::mat3(cameraMatrix));
-	glm::mat4 ViewMatrix = cameraMatrix;
-	glm::vec3 CameraPosition(glm::inverse(ViewMatrix)[3]);
-	glm::mat4 ViewProjectionMatrix = ProjectionMatrix * ViewMatrix;
-
-	int newparticles = (int)(delta * 10000.0);
-	if (newparticles > (int)(0.016f * 10000.0))
-		newparticles = (int)(0.016f * 10000.0);
+	double delta = time - lastTime;
+	lastTime = time;
+	
+	glm::mat4 transformation = perspectiveMatrix * cameraMatrix;
+	
+	int newparticles = 0;
+	
+	if (engineLightTimer < 40)
+	{
+		engineLightTimer++;
+		newparticles = (int)(delta * 10000.0);
+		if (newparticles > (int)(0.016f * 10000.0))
+			newparticles = (int)(0.016f * 10000.0);
+	}
+	else
+	{
+		lights[2].intensity = 0.00001;
+		lights[3].intensity = 0.00001;
+	}
 
 	for (int i = 0; i < newparticles; i++) {
 		int particleIndex = FindUnusedParticle();
 		ParticlesContainer[particleIndex].life = 100.0f;
-		ParticlesContainer[particleIndex].pos = lights[2].position;
+		if (lights[2].intensity > 0.001 && lights[3].intensity > 0.001)
+		{
+			if (rand() % 2)
+				ParticlesContainer[particleIndex].pos = lights[2].position;
 
-		float spread = 1.5f;
+			else
+				ParticlesContainer[particleIndex].pos = lights[3].position;
+		}
+		else if(lights[2].intensity > 0.001) 
+			ParticlesContainer[particleIndex].pos = lights[2].position;
+
+		else if (lights[3].intensity > 0.001) 
+			ParticlesContainer[particleIndex].pos = lights[3].position;
+	
+
+		float spread = 1.0f;
 		glm::vec3 maindir = glm::vec3(0.0f, 0.0f, 0.0f);
 		glm::vec3 randomdir = glm::vec3(
-			(rand() % 2000 - 1000.0f) / 1000.0f,
-			(rand() % 2000 - 1000.0f) / 1000.0f,
-			(rand() % 2000 - 1000.0f) / 1000.0f
+			(rand() % 2000 - 1000.0f) / 5000.0f,
+			(rand() % 2000 - 1000.0f) / 5000.0f,
+			(rand() % 2000 - 1000.0f) / 5000.0f
 		);
 
 		ParticlesContainer[particleIndex].speed = maindir + randomdir * spread;
 
 
 		// Very bad way to generate a random color
-		ParticlesContainer[particleIndex].r = rand() % 256;
-		ParticlesContainer[particleIndex].g = rand() % 256;
-		ParticlesContainer[particleIndex].b = rand() % 256;
+		ParticlesContainer[particleIndex].r = rand() % 100 + 100;
+		ParticlesContainer[particleIndex].g = 0;
+		ParticlesContainer[particleIndex].b = rand() % 100 + 50;
 		ParticlesContainer[particleIndex].a = (rand() % 256) / 3;
 
-		ParticlesContainer[particleIndex].size = (rand() % 1000) / 50000.0f;
+		ParticlesContainer[particleIndex].size = (rand() % 1000) / 50000.0f + 0.01f;
 
 	}
 	// Simulate all particles
@@ -492,64 +568,9 @@ void renderScene()
 
 		}
 	}
-
+	
 	SortParticles();
-	glBindBuffer(GL_ARRAY_BUFFER, particles_position_buffer);
-	glBufferData(GL_ARRAY_BUFFER, MaxParticles * 4 * sizeof(GLfloat), NULL, GL_STREAM_DRAW); // Buffer orphaning, a common way to improve streaming perf. See above link for details.
-	glBufferSubData(GL_ARRAY_BUFFER, 0, ParticlesCount * sizeof(GLfloat) * 4, g_particule_position_size_data);
-
-	glBindBuffer(GL_ARRAY_BUFFER, particles_color_buffer);
-	glBufferData(GL_ARRAY_BUFFER, MaxParticles * 4 * sizeof(GLubyte), NULL, GL_STREAM_DRAW); // Buffer orphaning, a common way to improve streaming perf. See above link for details.
-	glBufferSubData(GL_ARRAY_BUFFER, 0, ParticlesCount * sizeof(GLubyte) * 4, g_particule_color_data);
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, particleTexture);
-	glUniform1i(TextureParticle, 0);
-	glUniform3f(CameraRight_worldspace_ID, ViewMatrix[0][0], ViewMatrix[1][0], ViewMatrix[2][0]);
-	glUniform3f(CameraUp_worldspace_ID, ViewMatrix[0][1], ViewMatrix[1][1], ViewMatrix[2][1]);
-
-	glUniformMatrix4fv(ViewProjMatrixID, 1, GL_FALSE, &ViewMatrix[0][0]);
-
-	glEnableVertexAttribArray(0);
-	glBindBuffer(GL_ARRAY_BUFFER, particle_vertex_buffer);
-	glVertexAttribPointer(
-		0,                  // attribute. No particular reason for 0, but must match the layout in the shader.
-		3,                  // size
-		GL_FLOAT,           // type
-		GL_FALSE,           // normalized?
-		0,                  // stride
-		(void*)0            // array buffer offset
-	);
-	glEnableVertexAttribArray(1);
-	glBindBuffer(GL_ARRAY_BUFFER, particles_position_buffer);
-	glVertexAttribPointer(
-		1,                                // attribute. No particular reason for 1, but must match the layout in the shader.
-		4,                                // size : x + y + z + size => 4
-		GL_FLOAT,                         // type
-		GL_FALSE,                         // normalized?
-		0,                                // stride
-		(void*)0                          // array buffer offset
-	);
-	glEnableVertexAttribArray(2);
-	glBindBuffer(GL_ARRAY_BUFFER, particles_color_buffer);
-	glVertexAttribPointer(
-		2,                                // attribute. No particular reason for 1, but must match the layout in the shader.
-		4,                                // size : r + g + b + a => 4
-		GL_UNSIGNED_BYTE,                 // type
-		GL_TRUE,                          // normalized?    *** YES, this means that the unsigned char[4] will be accessible with a vec4 (floats) in the shader ***
-		0,                                // stride
-		(void*)0                          // array buffer offset
-	);
-	glVertexAttribDivisor(0, 0); // particles vertices : always reuse the same 4 vertices -> 0
-	glVertexAttribDivisor(1, 1); // positions : one per quad (its center)                 -> 1
-	glVertexAttribDivisor(2, 1); // color : one per quad                                  -> 1
-	glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, ParticlesCount);
-
-	glDisableVertexAttribArray(0);
-	glDisableVertexAttribArray(1);
-	glDisableVertexAttribArray(2);
-
-	
-	
+	drawParticles(ParticlesCount, transformation);	
 	drawSkybox(programSkybox, cubeContext, skyboxTexture);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -576,63 +597,13 @@ void renderScene()
 	glBindTexture(GL_TEXTURE_2D, pingpongColorbuffers[!horizontal]);
 	renderQuad();
 
-
-	if (engineLightTimer < 50) engineLightTimer++;
-	else
-	{
-		lights[2].intensity = 0.00001;
-		lights[3].intensity = 0.00001;
-	}
-
-
 	glutSwapBuffers();
-	//particlepart
-
 }
 
-void init()
+void init_particles()
 {
-	glEnable(GL_DEPTH_TEST);
-	programTex = shaderLoader.CreateProgram("shaders/shader_tex.vert", "shaders/shader_tex.frag");
-	programSkybox = shaderLoader.CreateProgram("shaders/shader_skybox.vert", "shaders/shader_skybox.frag");
-	programSun = shaderLoader.CreateProgram("shaders/shader_sun.vert", "shaders/shader_sun.frag");
-	programBlur = shaderLoader.CreateProgram("shaders/shader_blur.vert", "shaders/shader_blur.frag");
-	programBloom = shaderLoader.CreateProgram("shaders/shader_bloom.vert", "shaders/shader_bloom.frag");
-	programParticle = shaderLoader.CreateProgram("shaders/shader_particle.vert", "shaders/shader_particle.frag");
-
-	glUseProgram(programBlur);
-	glUniform1i(glGetUniformLocation(programBlur, "image"), 0);
-	glUseProgram(programBloom);
-	glUniform1i(glGetUniformLocation(programBloom, "scene"), 0);
-	glUniform1i(glGetUniformLocation(programBloom, "bloomBlur"), 1);
-	glUseProgram(0);
-
-
-	corvette = std::make_shared<Model>("models/Corvette-F3.obj");
-	crewmate = std::make_shared<Model>("models/space_humster.obj");
-	//shipModel = obj::loadModelFromFile("models/spaceship.obj");
-	sphereModel = obj::loadModelFromFile("models/sphere.obj");
-	cubeModel = obj::loadModelFromFile("models/cube.obj");
-
-	sphereContext.initFromOBJ(sphereModel);
-	cubeContext.initFromOBJ(cubeModel);
-	//shipContext.initFromOBJ(shipModel);
-	shipTexture = Core::LoadTexture("textures/spaceship.png");
-	sunTexture = Core::LoadTexture("textures/sun.png");
-	earthTexture = Core::LoadTexture("textures/earth2.png");
-	moonTexture = Core::LoadTexture("textures/moon.png");
-	particleTexture = Core::LoadTexture("textures/sun.png");
-	skyboxTexture = loadCubemap(faces);
-
-	glGenFramebuffers(1, &FBO);
-	glBindFramebuffer(GL_FRAMEBUFFER, FBO);
-	//particlepart
 	glGenVertexArrays(1, &VertexArrayID);
 	glBindVertexArray(VertexArrayID);
-	CameraRight_worldspace_ID = glGetUniformLocation(programParticle, "CameraRight_worldspace");
-	CameraUp_worldspace_ID = glGetUniformLocation(programParticle, "CameraUp_worldspace");
-	ViewProjMatrixID = glGetUniformLocation(programParticle, "VP");
-	TextureParticle = glGetUniformLocation(programParticle, "sprite");
 	g_particule_position_size_data = new GLfloat[MaxParticles * 4];
 	g_particule_color_data = new GLubyte[MaxParticles * 4];
 	for (int i = 0; i < MaxParticles; i++) {
@@ -660,7 +631,12 @@ void init()
 	// Initialize with empty (NULL) buffer : it will be updated later, each frame.
 	glBufferData(GL_ARRAY_BUFFER, MaxParticles * 4 * sizeof(GLubyte), NULL, GL_STREAM_DRAW);
 	lastTime = glutGet(GLUT_ELAPSED_TIME) / 1000.f;
+}
 
+void init_bloom()
+{
+	glGenFramebuffers(1, &FBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, FBO);
 
 
 	glGenTextures(2, colorBuffers);
@@ -705,6 +681,45 @@ void init()
 		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 			std::cout << "Framebuffer not complete!" << std::endl;
 	}
+}
+
+void init()
+{
+	glEnable(GL_DEPTH_TEST);
+	programTex = shaderLoader.CreateProgram("shaders/shader_tex.vert", "shaders/shader_tex.frag");
+	programSkybox = shaderLoader.CreateProgram("shaders/shader_skybox.vert", "shaders/shader_skybox.frag");
+	programSun = shaderLoader.CreateProgram("shaders/shader_sun.vert", "shaders/shader_sun.frag");
+	programBlur = shaderLoader.CreateProgram("shaders/shader_blur.vert", "shaders/shader_blur.frag");
+	programBloom = shaderLoader.CreateProgram("shaders/shader_bloom.vert", "shaders/shader_bloom.frag");
+	programParticle = shaderLoader.CreateProgram("shaders/shader_particle.vert", "shaders/shader_particle.frag");
+
+	glUseProgram(programBlur);
+	glUniform1i(glGetUniformLocation(programBlur, "image"), 0);
+	glUseProgram(programBloom);
+	glUniform1i(glGetUniformLocation(programBloom, "scene"), 0);
+	glUniform1i(glGetUniformLocation(programBloom, "bloomBlur"), 1);
+	glUseProgram(0);
+
+
+	corvette = std::make_shared<Model>("models/Corvette-F3.obj");
+	crewmate = std::make_shared<Model>("models/space_humster.obj");
+	//shipModel = obj::loadModelFromFile("models/spaceship.obj");
+	sphereModel = obj::loadModelFromFile("models/sphere.obj");
+	cubeModel = obj::loadModelFromFile("models/cube.obj");
+
+	sphereContext.initFromOBJ(sphereModel);
+	cubeContext.initFromOBJ(cubeModel);
+	//shipContext.initFromOBJ(shipModel);
+	shipTexture = Core::LoadTexture("textures/spaceship.png");
+	sunTexture = Core::LoadTexture("textures/sun.png");
+	earthTexture = Core::LoadTexture("textures/earth2.png");
+	moonTexture = Core::LoadTexture("textures/moon.png");
+	particleTexture = Core::LoadTexture("textures/sun.png");
+	skyboxTexture = loadCubemap(faces);
+
+	init_particles();
+	init_bloom();
+
 
 	Light l1;
 	l1.position = sunPos;
