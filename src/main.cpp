@@ -44,7 +44,11 @@ static GLubyte* g_particule_color_data;
 GLuint particle_vertex_buffer;
 GLuint particles_position_buffer;
 GLuint particles_color_buffer;
-
+double partX = -6;
+double partY = 0;
+double partXdir = 0;
+double partYdir = 0;
+double partAdir = 0;
 Core::Shader_Loader shaderLoader;
 
 Core::RenderContext armContext;
@@ -434,7 +438,7 @@ void renderScene()
 	planet1 = glm::rotate(planet1, time / 3.0f, glm::vec3(0.0f, 0.0f, 1.0f));
 
 	glm::mat4 crewmateModelMatrix = glm::translate(glm::vec3(0, 1, 1)) * glm::rotate(time / 2, glm::vec3(1, 0, 1)) * glm::scale(glm::vec3(0.01));
-	glm::mat4 shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.6f + glm::vec3(0, -0.25f, 0)) * glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.0001f));
+	glm::mat4 shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.7f + glm::vec3(0, -0.25f, 0)) * glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.0001f));
 
 
 	glUseProgram(programTex);
@@ -497,10 +501,37 @@ void renderScene()
 		lights[2].intensity = 0.00001;
 		lights[3].intensity = 0.00001;
 	}
-
+	if (cameraPos[0] < partX)
+	{
+		partXdir = 1;
+	}
+	else if (cameraPos[0] > partX)
+	{
+		partXdir = -1;
+	}
+	else
+	{
+		partXdir = 0;
+	}
+	if (cameraPos[2] < partY)
+	{
+		partYdir = 1;
+	}
+	else if (cameraPos[2] > partY)
+	{
+		partYdir = -1;
+	}
+	else
+	{
+		partYdir = 0;
+	}
+	if (cameraDir[0] < 0)
+	{
+		partAdir = cameraDir[0] * -1;
+	}
 	for (int i = 0; i < newparticles; i++) {
 		int particleIndex = FindUnusedParticle();
-		ParticlesContainer[particleIndex].life = 100.0f;
+		ParticlesContainer[particleIndex].life = 5.0f;
 		if (lights[2].intensity > 0.001 && lights[3].intensity > 0.001)
 		{
 			if (rand() % 2)
@@ -516,8 +547,8 @@ void renderScene()
 			ParticlesContainer[particleIndex].pos = lights[3].position;
 	
 
-		float spread = 1.0f;
-		glm::vec3 maindir = glm::vec3(0.0f, 0.0f, 0.0f);
+		float spread = 0.2f;
+		glm::vec3 maindir = glm::vec3(partXdir*partAdir, -0.3f, partYdir*partAdir);
 		glm::vec3 randomdir = glm::vec3(
 			(rand() % 2000 - 1000.0f) / 5000.0f,
 			(rand() % 2000 - 1000.0f) / 5000.0f,
@@ -549,7 +580,7 @@ void renderScene()
 			if (p.life > 0.0f) {
 
 				// Simulate simple physics : gravity only, no collisions
-				p.speed += glm::vec3(0.0f, -9.81f, 0.0f) * (float)delta * 0.5f;
+				p.speed += glm::vec3(0.0f, 0.0f, 0.0f) * (float)delta * 0.5f;
 				p.pos += p.speed * (float)delta;
 				p.cameradistance = glm::length2(p.pos - cameraPos);
 				//ParticlesContainer[i].pos += glm::vec3(0.0f,10.0f, 0.0f) * (float)delta;
@@ -615,14 +646,14 @@ void init_particles()
 	g_particule_position_size_data = new GLfloat[MaxParticles * 4];
 	g_particule_color_data = new GLubyte[MaxParticles * 4];
 	for (int i = 0; i < MaxParticles; i++) {
-		ParticlesContainer[i].life = 100.0f;
+		ParticlesContainer[i].life = 5.0f;
 		ParticlesContainer[i].cameradistance = -1.0f;
 	}
 	static const GLfloat g_vertex_buffer_data[] = {
-		 -0.5f, -0.5f, 0.0f,
-		  0.5f, -0.5f, 0.0f,
-		 -0.5f,  0.5f, 0.0f,
-		  0.5f,  0.5f, 0.0f,
+		 -0.3f, -0.3f, 0.0f,
+		  0.3f, -0.3f, 0.0f,
+		 -0.3f,  0.3f, 0.0f,
+		  0.3f,  0.3f, 0.0f,
 	};
 	glGenBuffers(1, &particle_vertex_buffer);
 	glBindBuffer(GL_ARRAY_BUFFER, particle_vertex_buffer);
@@ -780,10 +811,14 @@ int main(int argc, char** argv)
 
 	glutInit(&argc, argv);
 	glutSetOption(GLUT_MULTISAMPLE, 8);
-	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH | GLUT_MULTISAMPLE);
+	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH | GLUT_MULTISAMPLE);
 	glEnable(GL_MULTISAMPLE);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_DEPTH_TEST);
+	glDisable(GL_BLEND);
+	glDepthMask(GL_TRUE);
+	glEnable(GL_LIGHTING);
 	glutInitWindowPosition(0, 0);
 	glutInitWindowSize(SCR_WIDTH, SCR_HEIGHT);
 	//glutCreateWindow("GRK-PROJECT WIP");
