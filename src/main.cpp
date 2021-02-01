@@ -410,50 +410,15 @@ void renderScene()
 
 	drawObjectTexture(programSun, sphereContext, sunModelMatrix, glm::vec3(3.5f, 3.8f, 3.8f), sunTexture);
 	drawObjectTexture(programSun, sphereContext, sunModelMatrix2, glm::vec3(0.9f, 0.9f, 2.0f), sunTexture);
-	drawSkybox(programSkybox, cubeContext, skyboxTexture);
-
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-	bool horizontal = true, first_iteration = true;
-	unsigned int amount = 10;
-	glUseProgram(programBlur);
-	for (unsigned int i = 0; i < amount; i++)
-	{
-		glBindFramebuffer(GL_FRAMEBUFFER, pingpongFBO[horizontal]);
-		glUniform1i(glGetUniformLocation(programBlur, "horizontal"), horizontal);
-		glBindTexture(GL_TEXTURE_2D, first_iteration ? colorBuffers[1] : pingpongColorbuffers[!horizontal]);
-		renderQuad();
-		horizontal = !horizontal;
-		if (first_iteration)
-			first_iteration = false;
-	}
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-	glUseProgram(programBloom);
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, colorBuffers[0]);
-	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, pingpongColorbuffers[!horizontal]);
-	renderQuad();
-
-
-	if (engineLightTimer < 50) engineLightTimer++;
-	else
-	{
-		lights[2].intensity = 0.00001;
-		lights[3].intensity = 0.00001;
-	}
-
-
-	glutSwapBuffers();
+	
 	//particlepart
 	glUseProgram(programParticle);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	double currentTime = glutGet(GLUT_ELAPSED_TIME) / 1000.f;
 	double delta = currentTime - lastTime;
 	lastTime = currentTime;
-	glm::mat4 ProjectionMatrix = perspectiveMatrix * glm::mat4(glm::mat3(cameraMatrix));
+	glm::mat4 ProjectionMatrix = perspectiveMatrix;// *glm::mat4(glm::mat3(cameraMatrix));
 	glm::mat4 ViewMatrix = cameraMatrix;
 	glm::vec3 CameraPosition(glm::inverse(ViewMatrix)[3]);
 	glm::mat4 ViewProjectionMatrix = ProjectionMatrix * ViewMatrix;
@@ -465,7 +430,7 @@ void renderScene()
 	for (int i = 0; i < newparticles; i++) {
 		int particleIndex = FindUnusedParticle();
 		ParticlesContainer[particleIndex].life = 100.0f;
-		ParticlesContainer[particleIndex].pos = glm::vec3(0, 0, 0.0f);
+		ParticlesContainer[particleIndex].pos = lights[2].position;
 
 		float spread = 1.5f;
 		glm::vec3 maindir = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -484,7 +449,7 @@ void renderScene()
 		ParticlesContainer[particleIndex].b = rand() % 256;
 		ParticlesContainer[particleIndex].a = (rand() % 256) / 3;
 
-		ParticlesContainer[particleIndex].size = (rand() % 1000) / 2000.0f + 0.1f;
+		ParticlesContainer[particleIndex].size = (rand() % 1000) / 50000.0f;
 
 	}
 	// Simulate all particles
@@ -582,6 +547,47 @@ void renderScene()
 	glDisableVertexAttribArray(0);
 	glDisableVertexAttribArray(1);
 	glDisableVertexAttribArray(2);
+
+	
+	
+	drawSkybox(programSkybox, cubeContext, skyboxTexture);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	bool horizontal = true, first_iteration = true;
+	unsigned int amount = 10;
+	glUseProgram(programBlur);
+	for (unsigned int i = 0; i < amount; i++)
+	{
+		glBindFramebuffer(GL_FRAMEBUFFER, pingpongFBO[horizontal]);
+		glUniform1i(glGetUniformLocation(programBlur, "horizontal"), horizontal);
+		glBindTexture(GL_TEXTURE_2D, first_iteration ? colorBuffers[1] : pingpongColorbuffers[!horizontal]);
+		renderQuad();
+		horizontal = !horizontal;
+		if (first_iteration)
+			first_iteration = false;
+	}
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	glUseProgram(programBloom);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, colorBuffers[0]);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, pingpongColorbuffers[!horizontal]);
+	renderQuad();
+
+
+	if (engineLightTimer < 50) engineLightTimer++;
+	else
+	{
+		lights[2].intensity = 0.00001;
+		lights[3].intensity = 0.00001;
+	}
+
+
+	glutSwapBuffers();
+	//particlepart
+
 }
 
 void init()
