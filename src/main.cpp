@@ -464,9 +464,6 @@ void renderScene()
 	drawFromAssimpModel(programTex, crewmate, crewmateModelMatrix, glm::vec3(1));
 
 	//rysowanie Ziemi z ksiezycem
-	glm::mat4 earth = drawPlanet(time / 5.0f, sunPos * glm::vec3(1.5f, 1, 1), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(-10.5f, 0.0f, -10.5f), glm::vec3(0.5f, 0.5f, 0.5f));
-	glm::mat4 moon = drawMoon(earth, time / 2.0f, glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0, 1, 1), glm::vec3(1.5f, 1.0f, 1.0f), glm::vec3(0.3f, 0.3f, 0.3f));
-	earth = glm::rotate(earth, time / 3.0f, glm::vec3(0.0f, 0.0f, 1.0f));
 	drawObjectTexture(programTex, sphereContext, earth, glm::vec3(0.8f, 0.8f, 0.8f), earthTexture);
 	drawObjectTexture(programTex, sphereContext, moon, glm::vec3(0.9f, 1.0f, 0.9f), moonTexture);
 	drawObjectTexture(programTex, sphereContext, planet1, glm::vec3(0.4f, 0.2f, 0.9f), moonTexture);
