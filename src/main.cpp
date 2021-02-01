@@ -811,14 +811,10 @@ int main(int argc, char** argv)
 
 	glutInit(&argc, argv);
 	glutSetOption(GLUT_MULTISAMPLE, 8);
-	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH | GLUT_MULTISAMPLE);
+	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH | GLUT_MULTISAMPLE);
 	glEnable(GL_MULTISAMPLE);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glEnable(GL_DEPTH_TEST);
-	glDisable(GL_BLEND);
-	glDepthMask(GL_TRUE);
-	glEnable(GL_LIGHTING);
 	glutInitWindowPosition(0, 0);
 	glutInitWindowSize(SCR_WIDTH, SCR_HEIGHT);
 	//glutCreateWindow("GRK-PROJECT WIP");
