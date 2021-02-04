@@ -26,7 +26,7 @@ void main()
 {
 	vec3 fragColor = vec3(0,0,0);
 	vec4 textureColor = texture2D(colorTexture, vTexCoord);
-	vec3 ambient = vec3(0.1, 0.1, 0.1) * textureColor.xyz;
+	vec4 ambient = vec4(0.1, 0.1, 0.1, 1.0) * textureColor;
 	vec3 normal = normalize(interpNormal);
 	for(int i = 0; i < NR_POINT_LIGHTS; i++)
 	{
@@ -45,9 +45,9 @@ void main()
 		vec3 specular = spec * pointLights[i].color * (pointLights[i].intensity/dist);
 
 		vec3 texture = vec3(textureColor.x, textureColor.y, textureColor.z); // * pointLights[i].color;
-		fragColor += texture*diffuse+vec3(1)*specular;
+		fragColor += mix(texture,texture*diffuse+vec3(1)*specular,0.9);
 	}
 
     BrightColor = vec4(0.0, 0.0, 0.0, 1.0);
-	FragColor = vec4(fragColor+ambient,1.0);
+	FragColor = vec4(fragColor, 1.0) + ambient;
 }
