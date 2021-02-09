@@ -322,8 +322,10 @@ void drawParticles(int ParticlesCount, glm::mat4 &transformation)
 	glBindBuffer(GL_ARRAY_BUFFER, particles_color_buffer);
 	glBufferData(GL_ARRAY_BUFFER, MaxParticles * 4 * sizeof(GLubyte), NULL, GL_STREAM_DRAW); // Buffer orphaning, a common way to improve streaming perf. See above link for details.
 	glBufferSubData(GL_ARRAY_BUFFER, 0, ParticlesCount * sizeof(GLubyte) * 4, g_particule_color_data);
+
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, particleTexture);
+
 	glUniform1i(glGetUniformLocation(programParticle, "sprite"), 0);
 	glUniform3f(glGetUniformLocation(programParticle, "CameraRight_worldspace"), cameraSide.x, cameraSide.y, cameraSide.z);
 	glUniform3f(glGetUniformLocation(programParticle, "CameraUp_worldspace"), 0, 1, 0);
@@ -488,8 +490,10 @@ void renderScene()
 	glm::mat4 transformation = perspectiveMatrix * cameraMatrix;
 	
 	int newparticles = 0;
+
 	
-	if (engineLightTimer < 40)
+	
+	if (engineLightTimer < 30)
 	{
 		engineLightTimer++;
 		newparticles = (int)(delta * 10000.0);
@@ -501,6 +505,7 @@ void renderScene()
 		lights[2].intensity = 0.00001;
 		lights[3].intensity = 0.00001;
 	}
+	/*
 	if (cameraPos[0] < partX)
 	{
 		partXdir = 1;
@@ -529,9 +534,10 @@ void renderScene()
 	{
 		partAdir = cameraDir[0] * -1;
 	}
+	*/
 	for (int i = 0; i < newparticles; i++) {
 		int particleIndex = FindUnusedParticle();
-		ParticlesContainer[particleIndex].life = 5.0f;
+		ParticlesContainer[particleIndex].life = 2.0f;
 		if (lights[2].intensity > 0.001 && lights[3].intensity > 0.001)
 		{
 			if (rand() % 2)
@@ -547,8 +553,8 @@ void renderScene()
 			ParticlesContainer[particleIndex].pos = lights[3].position;
 	
 
-		float spread = 0.2f;
-		glm::vec3 maindir = glm::vec3(partXdir*partAdir, -0.3f, partYdir*partAdir);
+		float spread = 0.8;
+		glm::vec3 maindir = -1 * cameraDir; //glm::vec3(partXdir*partAdir, -0.3f, partYdir*partAdir);
 		glm::vec3 randomdir = glm::vec3(
 			(rand() % 2000 - 1000.0f) / 5000.0f,
 			(rand() % 2000 - 1000.0f) / 5000.0f,
@@ -646,7 +652,7 @@ void init_particles()
 	g_particule_position_size_data = new GLfloat[MaxParticles * 4];
 	g_particule_color_data = new GLubyte[MaxParticles * 4];
 	for (int i = 0; i < MaxParticles; i++) {
-		ParticlesContainer[i].life = 5.0f;
+		ParticlesContainer[i].life = 1.0f;
 		ParticlesContainer[i].cameradistance = -1.0f;
 	}
 	static const GLfloat g_vertex_buffer_data[] = {
