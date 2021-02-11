@@ -44,18 +44,9 @@ static GLubyte* g_particule_color_data;
 GLuint particle_vertex_buffer;
 GLuint particles_position_buffer;
 GLuint particles_color_buffer;
-double partX = -6;
-double partY = 0;
-double partXdir = 0;
-double partYdir = 0;
-double partAdir = 0;
 Core::Shader_Loader shaderLoader;
 
-Core::RenderContext armContext;
-std::vector<Core::Node> arm;
-int ballIndex;
 bool bothEngines = true;
-
 
 GLuint textureShip_normals;
 GLuint sunTexture;
@@ -64,16 +55,16 @@ GLuint moonTexture;
 GLuint skyboxTexture;
 GLuint shipTexture;
 GLuint particleTexture;
-obj::Model sphereModel;
-obj::Model cubeModel;
-obj::Model shipModel;
 
-Core::RenderContext sphereContext;
-Core::RenderContext cubeContext;
-Core::RenderContext shipContext;
+//Core::RenderContext sphereContext;
+
+//Core::RenderContext shipContext;
 
 //assimp
+std::shared_ptr<Model> cube;
+std::shared_ptr<Model> sphere;
 std::shared_ptr<Model> corvette;
+std::shared_ptr<Model> asteroid;
 //std::vector<Core::RenderContext> corvetteMeshes;
 std::shared_ptr<Model> crewmate;
 
@@ -264,6 +255,22 @@ void drawFromAssimpModel(GLuint program, std::shared_ptr<Model> model, glm::mat4
 	glUseProgram(0);
 }
 
+void drawFromAssimpTexture(GLuint program, std::shared_ptr<Model> model, glm::mat4 modelMatrix, glm::vec3 color, GLuint texID)
+{
+	glUseProgram(program);
+
+	glm::mat4 transformation = perspectiveMatrix * cameraMatrix * modelMatrix;
+
+	glUniformMatrix4fv(glGetUniformLocation(program, "modelMatrix"), 1, GL_FALSE, (float*)&modelMatrix);
+	glUniform3f(glGetUniformLocation(program, "colorTex"), color.x, color.y, color.z);
+	glUniformMatrix4fv(glGetUniformLocation(program, "transformation"), 1, GL_FALSE, (float*)&transformation);
+
+	Core::SetActiveTexture(texID, "diffuseTexture", program, 0);
+
+	model->Draw(program);
+	glUseProgram(0);
+}
+
 //Skybox
 unsigned int loadCubemap(std::vector<std::string> faces)
 {
@@ -296,7 +303,7 @@ unsigned int loadCubemap(std::vector<std::string> faces)
 
 	return textureID;
 }
-void drawSkybox(GLuint program, Core::RenderContext context, GLuint texID)
+void drawSkybox(GLuint program, std::shared_ptr<Model> cubeModel, GLuint texID)
 {
 	glUseProgram(program);
 	glDepthFunc(GL_LEQUAL);
@@ -307,7 +314,7 @@ void drawSkybox(GLuint program, Core::RenderContext context, GLuint texID)
 	glUniform1i(glGetUniformLocation(program, "skybox"), 0);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, texID);
-	Core::DrawContext(context);
+	cubeModel->Draw(program);
 	glDepthFunc(GL_LESS);
 	//glDepthMask(GL_TRUE);
 	glUseProgram(0);
@@ -381,7 +388,7 @@ void drawObjectTexture(GLuint program, Core::RenderContext context, glm::mat4 mo
 	glUniform3f(glGetUniformLocation(program, "colorTex"), texture.x, texture.y, texture.z);
 	glUniformMatrix4fv(glGetUniformLocation(program, "transformation"), 1, GL_FALSE, (float*)&transformation);
 
-	Core::SetActiveTexture(texID, "colorTexture", program, 0);
+	Core::SetActiveTexture(texID, "diffuseTexture", program, 0);
 
 	Core::DrawContext(context);
 	glUseProgram(0);
@@ -442,6 +449,7 @@ void renderScene()
 	glm::mat4 crewmateModelMatrix = glm::translate(glm::vec3(0, 1, 1)) * glm::rotate(time / 2, glm::vec3(1, 0, 1)) * glm::scale(glm::vec3(0.01));
 	glm::mat4 shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.7f + glm::vec3(0, -0.25f, 0)) * glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.0001f));
 
+	glm::mat4 testModelMatrix = glm::translate(glm::vec3(1, 0, 0));
 
 	glUseProgram(programTex);
 
@@ -454,6 +462,8 @@ void renderScene()
 	glm::mat4 engineRight = glm::translate(shipModelMatrix, glm::vec3(-450, 0, -1500));
 	lights[3].position = glm::vec3(engineRight[3][0], engineRight[3][1], engineRight[3][2]);
 
+
+	glUniform1i(glGetUniformLocation(programTex,"LightsCount"), lights.size());
 	for (int i = 0; i < lights.size(); i++)
 	{
 		std::string col = "pointLights[" + std::to_string(i) + "].color";
@@ -469,16 +479,18 @@ void renderScene()
 	drawFromAssimpModel(programTex, corvette, shipModelMatrix, glm::vec3(1));
 	drawFromAssimpModel(programTex, crewmate, crewmateModelMatrix, glm::vec3(1));
 
+	drawFromAssimpModel(programTex, asteroid, testModelMatrix, glm::vec3(1));
+
 	//rysowanie Ziemi z ksiezycem
-	drawObjectTexture(programTex, sphereContext, earth, glm::vec3(0.8f, 0.8f, 0.8f), earthTexture);
-	drawObjectTexture(programTex, sphereContext, moon, glm::vec3(0.9f, 1.0f, 0.9f), moonTexture);
-	drawObjectTexture(programTex, sphereContext, planet1, glm::vec3(0.4f, 0.2f, 0.9f), moonTexture);
+	drawFromAssimpTexture(programTex, sphere, earth, glm::vec3(0.8f, 0.8f, 0.8f), earthTexture);
+	drawFromAssimpTexture(programTex, sphere, moon, glm::vec3(0.9f, 1.0f, 0.9f), moonTexture);
+	drawFromAssimpTexture(programTex, sphere, planet1, glm::vec3(0.4f, 0.2f, 0.9f), moonTexture);
 
 	glUseProgram(programSun);
 	glUniform3f(glGetUniformLocation(programSun, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 
-	drawObjectTexture(programSun, sphereContext, sunModelMatrix, glm::vec3(3.5f, 3.8f, 3.8f), sunTexture);
-	drawObjectTexture(programSun, sphereContext, sunModelMatrix2, glm::vec3(0.9f, 0.9f, 2.0f), sunTexture);
+	drawFromAssimpTexture(programSun, sphere, sunModelMatrix, glm::vec3(3.5f, 3.8f, 3.8f), sunTexture);
+	drawFromAssimpTexture(programSun, sphere, sunModelMatrix2, glm::vec3(0.9f, 0.9f, 2.0f), sunTexture);
 	
 	//particlepart
 	glUseProgram(programParticle);
@@ -505,36 +517,7 @@ void renderScene()
 		lights[2].intensity = 0.00001;
 		lights[3].intensity = 0.00001;
 	}
-	/*
-	if (cameraPos[0] < partX)
-	{
-		partXdir = 1;
-	}
-	else if (cameraPos[0] > partX)
-	{
-		partXdir = -1;
-	}
-	else
-	{
-		partXdir = 0;
-	}
-	if (cameraPos[2] < partY)
-	{
-		partYdir = 1;
-	}
-	else if (cameraPos[2] > partY)
-	{
-		partYdir = -1;
-	}
-	else
-	{
-		partYdir = 0;
-	}
-	if (cameraDir[0] < 0)
-	{
-		partAdir = cameraDir[0] * -1;
-	}
-	*/
+
 	for (int i = 0; i < newparticles; i++) {
 		int particleIndex = FindUnusedParticle();
 		ParticlesContainer[particleIndex].life = 2.0f;
@@ -554,7 +537,7 @@ void renderScene()
 	
 
 		float spread = 0.8;
-		glm::vec3 maindir = -1 * cameraDir; //glm::vec3(partXdir*partAdir, -0.3f, partYdir*partAdir);
+		glm::vec3 maindir = -1 * cameraDir;
 		glm::vec3 randomdir = glm::vec3(
 			(rand() % 2000 - 1000.0f) / 5000.0f,
 			(rand() % 2000 - 1000.0f) / 5000.0f,
@@ -616,7 +599,7 @@ void renderScene()
 	
 	SortParticles();
 	drawParticles(ParticlesCount, transformation);	
-	drawSkybox(programSkybox, cubeContext, skyboxTexture);
+	drawSkybox(programSkybox, cube, skyboxTexture);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -748,12 +731,14 @@ void init()
 
 	corvette = std::make_shared<Model>("models/Corvette-F3.obj");
 	crewmate = std::make_shared<Model>("models/space_humster.obj");
+	asteroid = std::make_shared<Model>("models/Asteroid_4_LOW_MODEL_.obj");
 	//shipModel = obj::loadModelFromFile("models/spaceship.obj");
-	sphereModel = obj::loadModelFromFile("models/sphere.obj");
-	cubeModel = obj::loadModelFromFile("models/cube.obj");
+	//sphereModel = obj::loadModelFromFile("models/sphere.obj");
+	sphere = std::make_shared<Model>("models/sphere.obj");
+	cube = std::make_shared<Model>("models/cube.obj");
 
-	sphereContext.initFromOBJ(sphereModel);
-	cubeContext.initFromOBJ(cubeModel);
+	//sphereContext.initFromOBJ(sphereModel);
+	//cubeContext.initFromOBJ(cubeModel);
 	//shipContext.initFromOBJ(shipModel);
 	shipTexture = Core::LoadTexture("textures/spaceship.png");
 	sunTexture = Core::LoadTexture("textures/sun.png");

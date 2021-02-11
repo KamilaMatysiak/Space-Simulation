@@ -9,12 +9,14 @@ struct PointLight {
 	float intensity;
 };
 
-#define NR_POINT_LIGHTS 5
+#define MAX_POINT_LIGHTS 64
 
 uniform vec3 objectColor;
 uniform vec3 cameraPos;
-uniform sampler2D colorTexture;
-uniform PointLight pointLights[NR_POINT_LIGHTS];
+uniform sampler2D diffuseTexture;
+uniform sampler2D normalTexture;
+uniform PointLight pointLights[MAX_POINT_LIGHTS];
+uniform int LightsCount;
 
 in vec3 interpNormal;
 in vec3 fragPos;
@@ -25,10 +27,10 @@ in vec2 vTexCoord;
 void main()
 {
 	vec3 fragColor = vec3(0,0,0);
-	vec4 textureColor = texture2D(colorTexture, vTexCoord);
+	vec4 textureColor = texture2D(diffuseTexture, vTexCoord);
 	vec4 ambient = vec4(0.1, 0.1, 0.1, 1.0) * textureColor;
 	vec3 normal = normalize(interpNormal);
-	for(int i = 0; i < NR_POINT_LIGHTS; i++)
+	for(int i = 0; i < LightsCount; i++)
 	{
 		vec3 lightDir = normalize(pointLights[i].position - fragPos);
 	

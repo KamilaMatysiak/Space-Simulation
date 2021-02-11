@@ -5,7 +5,7 @@ layout (location = 1) out vec4 BrightColor;
 
 uniform vec3 objectColor;
 uniform vec3 cameraPos;
-uniform sampler2D colorTexture;
+uniform sampler2D diffuseTexture;
 uniform vec3 colorTex;
 in vec3 interpNormal;
 in vec3 fragPos;
@@ -16,7 +16,7 @@ void main()
 	vec3 normal = normalize(interpNormal);
 	vec3 V = normalize(cameraPos-fragPos);
 	float coef = pow(max(0,dot(normal,V)),2);
-	vec4 textureColor = texture2D(colorTexture, -vTexCoord);
+	vec4 textureColor = texture2D(diffuseTexture, -vTexCoord);
 	vec3 texture = vec3(textureColor.x, textureColor.y, textureColor.z) * colorTex;
 	FragColor = vec4(texture + texture * coef, 1.0);
 
