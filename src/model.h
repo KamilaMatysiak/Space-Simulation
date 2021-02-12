@@ -49,6 +49,13 @@ public:
             meshes[i].Draw(shader);
     }
 
+	// draws Instances
+	void DrawInstances(GLuint shader, int amount)
+	{
+		for (unsigned int i = 0; i < meshes.size(); i++)
+			meshes[i].DrawInstances(shader, amount);
+	}
+
 private:
     // loads a model with supported ASSIMP extensions from file and stores the resulting meshes in the meshes vector.
     void loadModel(string const& path)

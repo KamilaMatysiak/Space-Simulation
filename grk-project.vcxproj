@@ -11,12 +11,14 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <None Include="shaders\shader_asteroid.frag" />
+    <None Include="shaders\shader_asteroid.vert" />
     <None Include="shaders\shader_bloom.frag" />
     <None Include="shaders\shader_bloom.vert" />
     <None Include="shaders\shader_blur.frag" />
     <None Include="shaders\shader_blur.vert" />
-    <None Include="shaders\shader_color.frag" />
-    <None Include="shaders\shader_color.vert" />
+    <None Include="shaders\shader_normal.frag" />
+    <None Include="shaders\shader_normal.vert" />
     <None Include="shaders\shader_particle.frag" />
     <None Include="shaders\shader_particle.vert" />
     <None Include="shaders\shader_skybox.frag" />
