@@ -6,6 +6,7 @@ layout(location = 2) in vec3 vertexNormal;
 layout (location = 3) in vec3 aTangent;
 layout (location = 4) in vec3 aBitangent;
 layout (location = 5) in mat4 aInstanceMatrix;
+layout (location = 9) in mat3 normalMatrix;
 
 struct PointLight {
 	vec3 position;
@@ -21,7 +22,6 @@ uniform vec3 cameraPos;
 uniform PointLight pointLights[MAX_POINT_LIGHTS];
 uniform int LightsCount;
 
-
 out vec3 fragPos;
 out vec2 vTexCoord;
 out vec3 LightPosTS[MAX_POINT_LIGHTS];
@@ -32,7 +32,7 @@ void main()
 {
 	gl_Position = projection * view * aInstanceMatrix * vec4(vertexPosition, 1.0);
 
-	mat3 normalMatrix = transpose(inverse(mat3(aInstanceMatrix)));
+	//mat3 normalMatrix = transpose(inverse(mat3(aInstanceMatrix)));
 
 	vec3 T = normalize(normalMatrix * aTangent);
 	vec3 N = normalize(normalMatrix * vertexNormal);

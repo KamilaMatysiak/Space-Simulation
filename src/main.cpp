@@ -25,7 +25,9 @@ int SCR_HEIGHT = 720;
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 int winId;
+Core::Shader_Loader shaderLoader;
 
+//shader programs
 GLuint programTex;
 GLuint programSkybox;
 GLuint programSun;
@@ -51,12 +53,10 @@ GLuint particles_position_buffer;
 GLuint particles_color_buffer;
 bool bothEngines = true;
 
-Core::Shader_Loader shaderLoader;
-
-int asteroidAmount = 100;
-
+//textures
 GLuint sunTexture;
 GLuint earthTexture;
+GLuint marsTexture;
 GLuint moonTexture;
 GLuint skyboxTexture;
 GLuint particleTexture;
@@ -66,11 +66,16 @@ std::shared_ptr<Model> cube;
 std::shared_ptr<Model> sphere;
 std::shared_ptr<Model> corvette;
 std::shared_ptr<Model> asteroid;
-//std::vector<Core::RenderContext> corvetteMeshes;
 std::shared_ptr<Model> crewmate;
 
+//asteroids
+GLuint bufferAsteroids;
+int asteroidAmount = 100;
 
-//cameraPos
+int engineLightTimer = 50;
+float frustumScale = 1.f;
+
+//camera
 float cameraAngle = 0;
 glm::vec3 cameraPos = glm::vec3(-6, 0, 0);
 glm::vec3 cameraDir;
@@ -91,16 +96,6 @@ struct Particle {
 	bool operator<(const Particle& that) const {
 		return this->cameradistance > that.cameradistance;
 	}
-};
- 
-struct Object
-{
-	glm::mat4 modelM;
-	glm::mat4 invModelM;
-	std::shared_ptr<Model> modelParent;
-	GLuint textureID;
-	GLuint shaderID;
-	glm::vec3 color;
 };
 
 const int MaxParticles = 1000;
@@ -130,6 +125,17 @@ int FindUnusedParticle() {
 	return 0; // All particles are taken, override the first one
 }
 
+
+struct Object
+{
+	glm::mat4 modelM;
+	glm::mat4 invModelM;
+	std::shared_ptr<Model> modelParent;
+	GLuint textureID;
+	GLuint shaderID;
+	glm::vec3 color;
+};
+
 //Light
 struct Light {
 	glm::vec3 position;
@@ -137,8 +143,17 @@ struct Light {
 	float intensity;
 };
 
-int engineLightTimer = 50;
+struct Asteroid
+{
+	glm::mat4 model;
+	glm::mat3 inv;
+};
 
+//vectors
+std::vector<Object> objects;
+std::vector<Light> lights;
+std::vector<Asteroid> asteroids;
+std::vector<glm::mat4> asteroidsMatrixes;
 //wczytywanie skyboxa (musi byc jpg!)
 std::vector<std::string> faces
 {
@@ -150,9 +165,7 @@ std::vector<std::string> faces
 	"skybox/back.jpg"
 };
 
-std::vector<Object> objects;
-std::vector<Light> lights;
-std::vector<glm::mat4> asteroids;
+
 
 void keyboard(unsigned char key, int x, int y)
 {
@@ -221,6 +234,53 @@ void renderQuad()
 	glBindVertexArray(0);
 }
 
+glm::mat4 orbitAsteroids(float time, glm::vec3 objectPos, glm::mat4 asteroidModelMatrix, glm::vec3 orbit);
+
+void updateAsteroid()
+{
+	for (int i=0; i<asteroids.size();i++)
+	{
+		
+		asteroids[i].model = orbitAsteroids(lastTime, sunPos, asteroidsMatrixes[i], glm::vec3(0.0f, 1.0f, 0.0f));
+		asteroids[i].inv = glm::transpose(glm::inverse(glm::mat3(asteroids[i].model)));
+	}
+	glBindBuffer(GL_ARRAY_BUFFER, bufferAsteroids);
+	glBufferData(GL_ARRAY_BUFFER, asteroidAmount * sizeof(Asteroid), &asteroids[0], GL_DYNAMIC_DRAW);
+
+	for (unsigned int i = 0; i < asteroid->meshes.size(); i++)
+	{
+		unsigned int VAO = asteroid->meshes[i].VAO;
+		glBindVertexArray(VAO);
+		// set attribute pointers for matrix (4 times vec4)
+		glEnableVertexAttribArray(5);
+		glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, sizeof(Asteroid), (void*)0);
+		glEnableVertexAttribArray(6);
+		glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(Asteroid), (void*)(sizeof(glm::vec4)));
+		glEnableVertexAttribArray(7);
+		glVertexAttribPointer(7, 4, GL_FLOAT, GL_FALSE, sizeof(Asteroid), (void*)(2 * sizeof(glm::vec4)));
+		glEnableVertexAttribArray(8);
+		glVertexAttribPointer(8, 4, GL_FLOAT, GL_FALSE, sizeof(Asteroid), (void*)(3 * sizeof(glm::vec4)));
+
+
+		glEnableVertexAttribArray(9);
+		glVertexAttribPointer(9, 3, GL_FLOAT, GL_FALSE, sizeof(Asteroid), (void*)(4 * sizeof(glm::vec4)));
+		glEnableVertexAttribArray(10);
+		glVertexAttribPointer(10, 3, GL_FLOAT, GL_FALSE, sizeof(Asteroid), (void*)(4 * sizeof(glm::vec4) + sizeof(glm::vec3)));
+		glEnableVertexAttribArray(11);
+		glVertexAttribPointer(11, 3, GL_FLOAT, GL_FALSE, sizeof(Asteroid), (void*)(4 * sizeof(glm::vec4) + 2 * sizeof(glm::vec3)));
+
+		glVertexAttribDivisor(5, 1);
+		glVertexAttribDivisor(6, 1);
+		glVertexAttribDivisor(7, 1);
+		glVertexAttribDivisor(8, 1);
+		glVertexAttribDivisor(9, 1);
+		glVertexAttribDivisor(10, 1);
+		glVertexAttribDivisor(11, 1);
+
+		glBindVertexArray(0);
+	}
+}
+
 glm::mat4 createCameraMatrix()
 {
 	// Obliczanie kierunku patrzenia kamery (w plaszczyznie x-z) przy uzyciu zmiennej cameraAngle kontrolowanej przez klawisze.
@@ -231,7 +291,7 @@ glm::mat4 createCameraMatrix()
 
 	return Core::createViewMatrix(cameraPos, cameraDir, up);
 }
-float frustumScale = 1.f;
+
 
 //funkcja rysujaca modele za pomoca assimpa
 void drawFromAssimpModel(GLuint program, std::shared_ptr<Model> model, glm::mat4 modelMatrix)
@@ -248,6 +308,7 @@ void drawFromAssimpModel(GLuint program, std::shared_ptr<Model> model, glm::mat4
 	glUseProgram(0);
 }
 
+//funkcja rysujaca modele, ktore nie maja wlasnej tekstury za pomoca assimpa
 void drawFromAssimpTexture(GLuint program, std::shared_ptr<Model> model, glm::mat4 modelMatrix, GLuint texID)
 {
 	glUseProgram(program);
@@ -286,6 +347,15 @@ void drawAsteroids()
 	glUniformMatrix4fv(glGetUniformLocation(programAsteroid, "projection"), 1, GL_FALSE, (float*)&perspectiveMatrix);
 	glUniformMatrix4fv(glGetUniformLocation(programAsteroid, "view"), 1, GL_FALSE, (float*)&cameraMatrix);
 	asteroid->DrawInstances(programAsteroid, asteroidAmount);
+}
+
+glm::mat4 orbitAsteroids(float time, glm::vec3 objectPos, glm::mat4 asteroidModelMatrix, glm::vec3 orbit)
+{
+	glm::mat4 orbitModelMatrix = glm::translate(objectPos);
+	orbitModelMatrix = glm::rotate(orbitModelMatrix, time / 100, orbit);
+	//orbitModelMatrix = glm::translate(asteroidModelMatrix, -objectPos) * orbitModelMatrix;
+	
+	return orbitModelMatrix * asteroidModelMatrix;
 }
 
 //Skybox
@@ -489,12 +559,10 @@ void renderScene()
 
 	glUniform3f(glGetUniformLocation(programTex, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 
-
 	drawFromAssimpModel(programTex, crewmate, crewmateModelMatrix);
-	//rysowanie Ziemi z ksiezycem
 	drawFromAssimpTexture(programTex, sphere, earth, earthTexture);
 	drawFromAssimpTexture(programTex, sphere, moon,  moonTexture);
-	drawFromAssimpTexture(programTex, sphere, planet1, moonTexture);
+	drawFromAssimpTexture(programTex, sphere, planet1, marsTexture);
 
 	glUseProgram(programNormal);
 
@@ -535,6 +603,7 @@ void renderScene()
 	}
 
 	glUniform3f(glGetUniformLocation(programAsteroid, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
+	updateAsteroid();
 	drawAsteroids();
 
 	//particlepart
@@ -545,10 +614,8 @@ void renderScene()
 	lastTime = time;
 	
 	glm::mat4 transformation = perspectiveMatrix * cameraMatrix;
-	
 	int newparticles = 0;
 
-	
 	if (engineLightTimer < 30)
 	{
 		engineLightTimer++;
@@ -654,8 +721,8 @@ void renderScene()
 void initAsteroids()
 {
 	int amount = asteroidAmount;
-	float radius = 15.0;
-	float offset = 25.0f;
+	float radius = 7.0;
+	float offset = 2.0f;
 
 	for (int i=0; i < amount; i++)
 	{
@@ -666,7 +733,7 @@ void initAsteroids()
 		float x = sin(angle) * radius + displacement;
 		displacement = (rand() % (int)(2 * offset * 100)) / 100.0f - offset;
 		
-		float y = displacement * 0.4f;
+		float y = displacement * 0.1f;
 		displacement = (rand() % (int)(2 * offset * 100)) / 100.0f - offset;
 		
 		float z = cos(angle) * radius + displacement;
@@ -677,36 +744,15 @@ void initAsteroids()
 
 		float rotAngle = (rand() % 360);
 		model = glm::rotate(model, rotAngle, glm::vec3(0.4f, 0.6f, 0.8f));
-
-		asteroids.push_back(model);
+		Asteroid obj;
+		obj.model = model;
+		obj.inv = glm::transpose(glm::inverse(glm::mat3(model)));
+		asteroidsMatrixes.push_back(model);
+		asteroids.push_back(obj);
 	}
 
-	unsigned int buffer;
-	glGenBuffers(1, &buffer);
-	glBindBuffer(GL_ARRAY_BUFFER, buffer);
-	glBufferData(GL_ARRAY_BUFFER, amount * sizeof(glm::mat4), &asteroids[0], GL_STATIC_DRAW);
-
-	for (unsigned int i = 0; i < asteroid->meshes.size(); i++)
-	{
-		unsigned int VAO = asteroid->meshes[i].VAO;
-		glBindVertexArray(VAO);
-		// set attribute pointers for matrix (4 times vec4)
-		glEnableVertexAttribArray(5);
-		glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void*)0);
-		glEnableVertexAttribArray(6);
-		glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void*)(sizeof(glm::vec4)));
-		glEnableVertexAttribArray(7);
-		glVertexAttribPointer(7, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void*)(2 * sizeof(glm::vec4)));
-		glEnableVertexAttribArray(8);
-		glVertexAttribPointer(8, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void*)(3 * sizeof(glm::vec4)));
-
-		glVertexAttribDivisor(5, 1);
-		glVertexAttribDivisor(6, 1);
-		glVertexAttribDivisor(7, 1);
-		glVertexAttribDivisor(8, 1);
-
-		glBindVertexArray(0);
-	}
+	glGenBuffers(1, &bufferAsteroids);
+	updateAsteroid();
 }
 
 void initParticles()
@@ -839,19 +885,15 @@ void init()
 
 	corvette = std::make_shared<Model>("models/Corvette-F3.obj");
 	crewmate = std::make_shared<Model>("models/space_humster.obj");
-	asteroid = std::make_shared<Model>("models/Asteroid_4_LOW_MODEL_.obj");
-	//shipModel = obj::loadModelFromFile("models/spaceship.obj");
-	//sphereModel = obj::loadModelFromFile("models/sphere.obj");
+	asteroid = std::make_shared<Model>("models/Asteroid_X.obj");
 	sphere = std::make_shared<Model>("models/sphere.obj");
 	cube = std::make_shared<Model>("models/cube.obj");
 
-	//sphereContext.initFromOBJ(sphereModel);
-	//cubeContext.initFromOBJ(cubeModel);
-	//shipContext.initFromOBJ(shipModel);
 	sunTexture = Core::LoadTexture("textures/sun.png");
 	earthTexture = Core::LoadTexture("textures/earth2.png");
 	moonTexture = Core::LoadTexture("textures/moon.png");
 	particleTexture = Core::LoadTexture("textures/sun.png");
+	marsTexture = Core::LoadTexture("models/textures/Mars/2k_mars.png");
 	skyboxTexture = loadCubemap(faces);
 
 
@@ -863,13 +905,13 @@ void init()
 	Light l1;
 	l1.position = sunPos;
 	l1.color = glm::vec3(0.8f, 0.8f, 0.7f);
-	l1.intensity = 25;
+	l1.intensity = 105;
 	lights.push_back(l1);
 
 	Light l2;
 	l2.position = sunPos2;
 	l2.color = glm::vec3(0.5f, 0.5f, 0.5f);
-	l2.intensity = 15;
+	l2.intensity = 55;
 	lights.push_back(l2);
 
 	Light l3;

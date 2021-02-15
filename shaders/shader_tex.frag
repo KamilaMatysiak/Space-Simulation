@@ -26,14 +26,14 @@ in vec2 vTexCoord;
 void main()
 {
 	vec3 fragColor = vec3(0,0,0);
-	vec4 textureColor = texture2D(diffuseTexture, vTexCoord);
-	vec3 ambient = vec3(0.2) * textureColor.xyz;
+	vec3 texture = texture2D(diffuseTexture, vTexCoord).rgb;
+	vec3 ambient = vec3(0.2) * texture;
 	vec3 normal = normalize(interpNormal);
+	vec3 V = normalize(cameraPos-fragPos);
+
 	for(int i = 0; i < LightsCount; i++)
 	{
 		vec3 lightDir = normalize(pointLights[i].position - fragPos);
-	
-		vec3 V = normalize(cameraPos-fragPos);
 		vec3 R = reflect(-lightDir,normal);
 
 		float dist = distance(fragPos, pointLights[i].position);
@@ -43,10 +43,9 @@ void main()
 		float diff = max(0,dot(normal,normalize(lightDir)));
 
 		vec3 diffuse = pointLights[i].color * diff * distance * pointLights[i].intensity;
-		vec3 specular = spec * pointLights[i].color * (pointLights[i].intensity/(dist*2));
+		vec3 specular = spec * pointLights[i].color * (pointLights[i].intensity/(dist*5));
 
-		vec3 texture = vec3(textureColor.x, textureColor.y, textureColor.z); // * pointLights[i].color;
-		fragColor += texture*diffuse+vec3(1)*specular;
+		fragColor += texture*(diffuse+specular);
 	}
 
     BrightColor = vec4(0.0, 0.0, 0.0, 1.0);

@@ -54,7 +54,7 @@ void main()
 		vec3 specular = spec * pointLights[i].color * (pointLights[i].intensity/dist);
 
 
-		fragColor += texture*diffuse+specular;
+		fragColor += texture*(diffuse+specular);
 	}
 
     BrightColor = vec4(0.0, 0.0, 0.0, 1.0);
