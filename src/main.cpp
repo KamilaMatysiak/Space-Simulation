@@ -45,7 +45,7 @@ unsigned int colorBuffers[2];
 
 //particlepart
 GLuint VertexArrayID;
-double lastTime;
+float lastTime;
 static GLfloat* g_particule_position_size_data;
 static GLubyte* g_particule_color_data;
 GLuint particle_vertex_buffer;
@@ -128,6 +128,7 @@ int FindUnusedParticle() {
 
 struct Object
 {
+	std::string name;
 	glm::mat4 modelM;
 	glm::mat4 invModelM;
 	std::shared_ptr<Model> modelParent;
@@ -512,6 +513,55 @@ glm::mat4 drawMoon(glm::mat4 planetModelMatrix, float time, glm::vec3 orbit, glm
 	return moonModelMatrix;
 }
 
+Object* findObject(std::string name)
+{
+	for (int i = 0; i < objects.size(); i++)
+	{
+		if (objects[i].name == name)
+			return &objects[i];
+	}
+	return nullptr;
+}
+
+void updateObjects()
+{
+	Object* obj = findObject("Corvette");
+	glm::mat4 shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.7f + glm::vec3(0, -0.25f, 0)) * glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.0001f));
+	obj->modelM = shipModelMatrix;
+	obj->invModelM = glm::inverse(shipModelMatrix);
+
+	glm::mat4 engineLeft = glm::translate(shipModelMatrix, glm::vec3(450, 0, -1500));
+	lights[2].position = glm::vec3(engineLeft[3][0], engineLeft[3][1], engineLeft[3][2]);
+
+	glm::mat4 engineRight = glm::translate(shipModelMatrix, glm::vec3(-450, 0, -1500));
+	lights[3].position = glm::vec3(engineRight[3][0], engineRight[3][1], engineRight[3][2]);
+
+	obj = findObject("Space Humster");
+	glm::mat4 crewmateModelMatrix = glm::translate(glm::vec3(0, 1, 1)) * glm::rotate(lastTime / 10, glm::vec3(1, 0, 1)) * glm::scale(glm::vec3(0.01));
+	obj->modelM = crewmateModelMatrix;
+	obj->invModelM = glm::inverse(crewmateModelMatrix);
+	
+	//earth & moon
+	glm::mat4 earthModelMatrix = drawPlanet(lastTime / 5.0f, sunPos*glm::vec3(1.5f, 1, 1), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(-10.5f, 0.0f, -10.5f), glm::vec3(0.5f, 0.5f, 0.5f));
+	glm::mat4 moonModelMatrix = drawMoon(earthModelMatrix, lastTime / 2.0f, glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0, 2, 2), glm::vec3(1.5f, 1.0f, 1.0f), glm::vec3(0.3f, 0.3f, 0.3f));
+	earthModelMatrix = glm::rotate(earthModelMatrix, lastTime / 5.0f, glm::vec3(0.0f, 0.0f, 0.1f));
+
+	obj = findObject("Moon");
+	obj->modelM = moonModelMatrix;
+	obj->invModelM = glm::inverse(moonModelMatrix);
+
+	obj = findObject("Earth");
+	obj->modelM = earthModelMatrix;
+	obj->invModelM = glm::inverse(earthModelMatrix);
+
+	obj = findObject("Mars");
+	glm::mat4 marsModelMatrix = drawPlanet(lastTime / 5.0f, sunPos2, glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(-6.5f, 0.0f, -6.5f), glm::vec3(0.4f, 0.4f, 0.4f));
+	marsModelMatrix = glm::rotate(marsModelMatrix, lastTime / 3.0f, glm::vec3(0.0f, 0.0f, 1.0f));
+	obj->modelM = marsModelMatrix;
+	obj->invModelM = glm::inverse(marsModelMatrix);
+}
+
+
 void renderScene()
 {
 	cameraMatrix = createCameraMatrix();
@@ -524,25 +574,6 @@ void renderScene()
 
 	glBindFramebuffer(GL_FRAMEBUFFER, FBO);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-
-	glm::mat4 earth = drawPlanet(time / 5.0f, sunPos*glm::vec3(1.5f, 1, 1), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(-10.5f, 0.0f, -10.5f), glm::vec3(0.5f, 0.5f, 0.5f));
-	glm::mat4 moon = drawMoon(earth, time / 2.0f, glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0, 1, 1), glm::vec3(1.5f, 1.0f, 1.0f), glm::vec3(0.3f, 0.3f, 0.3f));
-	earth = glm::rotate(earth, time / 3.0f, glm::vec3(0.0f, 0.0f, 1.0f));
-
-	glm::mat4 planet1 = drawPlanet(time / 5.0f, sunPos2, glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(-6.5f, 0.0f, -6.5f), glm::vec3(0.4f, 0.4f, 0.4f));
-	planet1 = glm::rotate(planet1, time / 3.0f, glm::vec3(0.0f, 0.0f, 1.0f));
-
-	glm::mat4 crewmateModelMatrix = glm::translate(glm::vec3(0, 1, 1)) * glm::rotate(time / 2, glm::vec3(1, 0, 1)) * glm::scale(glm::vec3(0.01));
-	glm::mat4 shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.7f + glm::vec3(0, -0.25f, 0)) * glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.0001f));
-
-	glm::mat4 testModelMatrix = glm::translate(glm::vec3(1, 0, 0)) * glm::scale(glm::vec3(0.5f));
-
-	glm::mat4 engineLeft = glm::translate(shipModelMatrix, glm::vec3(450, 0, -1500));
-	lights[2].position = glm::vec3(engineLeft[3][0], engineLeft[3][1], engineLeft[3][2]);
-
-	glm::mat4 engineRight = glm::translate(shipModelMatrix, glm::vec3(-450, 0, -1500));
-	lights[3].position = glm::vec3(engineRight[3][0], engineRight[3][1], engineRight[3][2]);
 
 	glUseProgram(programTex);
 
@@ -559,10 +590,6 @@ void renderScene()
 
 	glUniform3f(glGetUniformLocation(programTex, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 
-	drawFromAssimpModel(programTex, crewmate, crewmateModelMatrix);
-	drawFromAssimpTexture(programTex, sphere, earth, earthTexture);
-	drawFromAssimpTexture(programTex, sphere, moon,  moonTexture);
-	drawFromAssimpTexture(programTex, sphere, planet1, marsTexture);
 
 	glUseProgram(programNormal);
 
@@ -579,15 +606,13 @@ void renderScene()
 
 	glUniform3f(glGetUniformLocation(programNormal, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 
-	drawFromAssimpModel(programNormal, asteroid, testModelMatrix);
-	drawFromAssimpModel(programNormal, corvette, shipModelMatrix);
-
 	glUseProgram(programSun);
 	glUniform3f(glGetUniformLocation(programSun, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 
+	updateObjects();
+
 	for (Object & obj : objects)
 		drawObject(obj);
-	
 
 	//asteroidpart
 	glUseProgram(programAsteroid);
@@ -845,6 +870,7 @@ void initObjects()
 	glm::mat4 sunModelMatrix = glm::mat4(1.0f);
 	sunModelMatrix = glm::translate(sunModelMatrix, sunPos);
 	sunModelMatrix = glm::scale(sunModelMatrix, glm::vec3(3.0f, 3.0f, 3.0f));
+	obj.name = "BigSun";
 	obj.modelM = sunModelMatrix;
 	obj.invModelM = glm::inverse(sunModelMatrix);
 	obj.modelParent = sphere;
@@ -855,11 +881,67 @@ void initObjects()
 
 	glm::mat4 sunModelMatrix2 = glm::mat4(1.0f);
 	sunModelMatrix2 = glm::translate(sunModelMatrix2, sunPos2);
+	obj.name = "SmollSun";
 	obj.modelM = sunModelMatrix2;
 	obj.invModelM = glm::inverse(sunModelMatrix2);
 	obj.color = glm::vec3(0.9f, 0.9f, 2.0f);
-
 	objects.push_back(obj);
+
+	glm::mat4 earthModelMatrix;
+	glm::mat4 moonModelMatrix;
+
+	Object planet;
+	planet.name = "Earth";
+	planet.modelM = earthModelMatrix;
+	planet.invModelM = glm::inverse(earthModelMatrix);
+	planet.modelParent = sphere;
+	planet.textureID = earthTexture;
+	planet.shaderID = programTex;
+	planet.color = glm::vec3(1.0f);
+	objects.push_back(planet);
+
+	glm::mat4 marsModelMatrix;
+
+	planet.name = "Mars";
+	planet.modelM = marsModelMatrix;
+	planet.invModelM = glm::inverse(marsModelMatrix);
+	planet.modelParent = sphere;
+	planet.textureID = marsTexture;
+	planet.shaderID = programTex;
+	planet.color = glm::vec3(1.0f);
+	objects.push_back(planet);
+
+	Object moon;
+	moon.name = "Moon";
+	moon.modelM = moonModelMatrix;
+	moon.invModelM = glm::inverse(moonModelMatrix);
+	moon.modelParent = sphere;
+	moon.textureID = moonTexture;
+	moon.shaderID = programTex;
+	moon.color = glm::vec3(1.0f);
+	objects.push_back(moon);
+
+	glm::mat4 crewmateModelMatrix;
+
+	Object crewmateObj;
+	crewmateObj.name = "Space Humster";
+	crewmateObj.modelM = crewmateModelMatrix;
+	crewmateObj.invModelM = glm::inverse(crewmateModelMatrix);
+	crewmateObj.modelParent = crewmate;
+	crewmateObj.shaderID = programNormal;
+	crewmateObj.color = glm::vec3(1.0f);
+	objects.push_back(crewmateObj);
+
+	glm::mat4 shipModelMatrix;
+
+	Object ship;
+	ship.name = "Corvette";
+	ship.modelM = shipModelMatrix;
+	ship.invModelM = glm::inverse(shipModelMatrix);
+	ship.modelParent = corvette;
+	ship.shaderID = programNormal;
+	ship.color = glm::vec3(1.0f);
+	objects.push_back(ship);
 
 }
 
