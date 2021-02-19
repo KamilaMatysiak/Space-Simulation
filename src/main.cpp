@@ -567,6 +567,8 @@ void renderScene()
 	cameraMatrix = createCameraMatrix();
 	perspectiveMatrix = Core::createPerspectiveMatrix(0.01f, 1000.0f, frustumScale);
 	float time = glutGet(GLUT_ELAPSED_TIME) / 1000.f;
+	double delta = time - lastTime;
+	lastTime = time;
 
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -634,9 +636,6 @@ void renderScene()
 	//particlepart
 	glUseProgram(programParticle);
 	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-	double delta = time - lastTime;
-	lastTime = time;
 	
 	glm::mat4 transformation = perspectiveMatrix * cameraMatrix;
 	int newparticles = 0;
@@ -962,6 +961,7 @@ void init()
 	glUseProgram(programBloom);
 	glUniform1i(glGetUniformLocation(programBloom, "scene"), 0);
 	glUniform1i(glGetUniformLocation(programBloom, "bloomBlur"), 1);
+	glUniform2f(glGetUniformLocation(programBloom, "screenSize"), 1.0f / SCR_WIDTH, 1.0f / SCR_HEIGHT);
 	glUseProgram(0);
 
 
@@ -1034,9 +1034,9 @@ int main(int argc, char** argv)
 	SCR_WIDTH = screenWidth; SCR_HEIGHT = screenHeight;
 
 	glutInit(&argc, argv);
-	glutSetOption(GLUT_MULTISAMPLE, 8);
-	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH | GLUT_MULTISAMPLE);
-	glEnable(GL_MULTISAMPLE);
+	//glutSetOption(GLUT_MULTISAMPLE, 8);
+	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
+	//glEnable(GL_MULTISAMPLE);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glutInitWindowPosition(0, 0);
