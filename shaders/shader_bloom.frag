@@ -7,7 +7,6 @@ uniform sampler2D scene;
 uniform sampler2D bloomBlur;
 uniform vec2 screenSize;
 
-//
 float FXAA_SPAN_MAX = 100.0f;
 //sila dzialania
 float FXAA_REDUCE_MUL = 1.0f/8.0f;

@@ -1,23 +1,86 @@
-﻿#include "glew.h"
-#include "freeglut.h"
-#include "glm.hpp"
-#include "ext.hpp"
-#include <iostream>
+﻿#include <iostream>
 #include <cmath>
 #include <ctime>
 #include <vector>
-#include "Shader_Loader.h"
-#include "Render_Utils.h"
-#include "Camera.h"
-#include "Texture.h"
-
-#include "Box.cpp"
-
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
+
+#include "glew.h"
+#include "freeglut.h"
+#include "glm.hpp"
+#include "ext.hpp"
+#include "Physics.h"
+#include "Shader_Loader.h"
+#include "Camera.h"
+#include "Texture.h"
 #include "model.h"
 #include <WinUser.h>
+
+static PxFilterFlags simulationFilterShader(PxFilterObjectAttributes attributes0,
+	PxFilterData filterData0, PxFilterObjectAttributes attributes1, PxFilterData filterData1,
+	PxPairFlags& pairFlags, const void* constantBlock, PxU32 constantBlockSize)
+{
+	pairFlags =
+		PxPairFlag::eCONTACT_DEFAULT | // default contact processing
+		PxPairFlag::eNOTIFY_CONTACT_POINTS | // contact points will be available in onContact callback
+		PxPairFlag::eNOTIFY_TOUCH_PERSISTS |
+		PxPairFlag::eNOTIFY_TOUCH_FOUND; // onContact callback will be called for this pair
+
+	return physx::PxFilterFlag::eDEFAULT;
+}
+
+class SimulationEventCallback : public PxSimulationEventCallback
+{
+public:
+	void onContact(const PxContactPairHeader& pairHeader,
+		const PxContactPair* pairs, PxU32 nbPairs)
+	{
+		// HINT: You can check which actors are in contact
+		// using pairHeader.actors[0] and pairHeader.actors[1]
+		auto ac = pairHeader.actors[0];
+		auto ac2 = pairHeader.actors[1];
+		/*if (ac->userData == renderables.back() || ac2->userData == renderables.back())
+		{
+			std::cout << "Liczba CP:" << nbPairs << std::endl;
+
+			for (PxU32 i = 0; i < nbPairs; i++)
+			{
+				const PxContactPair& cp = pairs[i];
+
+				// HINT: two get the contact points, use
+				// PxContactPair::extractContacts
+
+				std::vector<PxContactPairPoint> buffer;
+				for (int i = 0; i < cp.contactCount; i++)
+					buffer.push_back(PxContactPairPoint());
+
+				cp.extractContacts(&buffer[0], sizeof(buffer));
+
+				for (int i = 0; i < buffer.size(); i++)
+				{
+					auto position = buffer[i].position;
+					std::cout << position.x << ' ' << position.y << ' ' << position.x << std::endl;
+				}
+			}
+		}*/
+	}
+	virtual void onConstraintBreak(PxConstraintInfo* constraints, PxU32 count) {}
+	virtual void onWake(PxActor** actors, PxU32 count) {}
+	virtual void onSleep(PxActor** actors, PxU32 count) {}
+	virtual void onTrigger(PxTriggerPair* pairs, PxU32 count) {}
+	virtual void onAdvance(const PxRigidBody*const* bodyBuffer, const PxTransform* poseBuffer, const PxU32 count) {}
+};
+
+// Initalization of physical scene (PhysX)
+SimulationEventCallback simulationEventCallback;
+Physics pxScene(0.0 /* gravity (m/s^2) */, simulationFilterShader,
+	&simulationEventCallback);
+
+// fixed timestep for stable and deterministic simulation
+const double physicsStepTime = 1.f / 60.f;
+double physicsTimeToProcess = 0;
+
 
 int SCR_WIDTH = 1240;
 int SCR_HEIGHT = 720;
@@ -85,6 +148,14 @@ glm::mat4 cameraMatrix, perspectiveMatrix;
 glm::vec3 sunPos = glm::vec3(10.0f, 0.0f, -5.0f);
 glm::vec3 sunPos2 = glm::vec3(25.0f, -1.0f, 10.0f);
 
+//physics
+physx::PxShape* rectangleShape;
+physx::PxShape* sphereShape;
+physx::PxMaterial* material;
+std::vector<physx::PxRigidDynamic*> dynamicObjects;
+std::vector<physx::PxRigidStatic*> staticObjects;
+physx::PxRigidDynamic* getActor(std::string name);
+
 //particlepart
 struct Particle {
 	glm::vec3 pos, speed;
@@ -101,7 +172,6 @@ struct Particle {
 const int MaxParticles = 1000;
 Particle ParticlesContainer[MaxParticles];
 int LastUsedParticle = 0;
-
 void SortParticles() {
 	std::sort(&ParticlesContainer[0], &ParticlesContainer[MaxParticles]);
 }
@@ -125,7 +195,6 @@ int FindUnusedParticle() {
 	return 0; // All particles are taken, override the first one
 }
 
-
 struct Object
 {
 	std::string name;
@@ -135,6 +204,7 @@ struct Object
 	GLuint textureID;
 	GLuint shaderID;
 	glm::vec3 color;
+	bool isDynamic;
 };
 
 //Light
@@ -143,7 +213,6 @@ struct Light {
 	glm::vec3 color;
 	float intensity;
 };
-
 struct Asteroid
 {
 	glm::mat4 model;
@@ -166,10 +235,14 @@ std::vector<std::string> faces
 	"skybox/back.jpg"
 };
 
-
-
 void keyboard(unsigned char key, int x, int y)
 {
+	auto actor = getActor("Corvette");
+	auto move = actor->getLinearVelocity();
+	physx::PxVec3 dir = physx::PxVec3(cameraDir.x, cameraDir.y, cameraDir.z);
+	glm::vec3 cross = glm::cross(cameraDir, glm::vec3(0, 0, 1));
+	physx::PxVec3 dirCross = physx::PxVec3(cross.x, cross.y, cross.z);
+
 	float angleSpeed = 0.1f;
 	float moveSpeed = 0.1f;
 	switch (key)
@@ -192,17 +265,24 @@ void keyboard(unsigned char key, int x, int y)
 
 	case 'w':
 	{
-		cameraPos += cameraDir * moveSpeed;
+		actor->setLinearVelocity(move + dir);
+		//cameraPos += cameraDir * moveSpeed;
 		lights[2].intensity = 0.05;
 		lights[3].intensity = 0.05;
 		engineLightTimer = 0;
 		break;
 	}
-	case 's': cameraPos -= cameraDir * moveSpeed; break;
-	case 'd': cameraPos += glm::cross(cameraDir, glm::vec3(0, 1, 0)) * moveSpeed; break;
-	case 'a': cameraPos -= glm::cross(cameraDir, glm::vec3(0, 1, 0)) * moveSpeed; break;
-	case 'z': cameraPos += glm::cross(cameraDir, glm::vec3(0, 0, 1)) * moveSpeed; break;
-	case 'x': cameraPos -= glm::cross(cameraDir, glm::vec3(0, 0, 1)) * moveSpeed; break;
+	case 's': actor->setLinearVelocity(move - dir); break;
+	//cameraPos -= cameraDir * moveSpeed; break;
+	case 'd': actor->setLinearVelocity(move + dirCross); break;
+	//cameraPos += glm::cross(cameraDir, glm::vec3(0, 1, 0)) * moveSpeed; break;
+	case 'a': actor->setLinearVelocity(move - dirCross); break;
+	//cameraPos -= glm::cross(cameraDir, glm::vec3(0, 1, 0)) * moveSpeed; break;
+	case 'z': actor->setLinearVelocity(PxVec3(move.x, move.y + 3, move.z)); break;
+	//cameraPos += glm::cross(cameraDir, glm::vec3(0, 0, 1)) * moveSpeed; break;
+	case 'x': actor->setLinearVelocity(PxVec3(move.x, move.y - 3, move.z)); break;
+	//cameraPos -= glm::cross(cameraDir, glm::vec3(0, 0, 1)) * moveSpeed; break;
+	case ' ':actor->setLinearVelocity(PxVec3(0, 0, 0)); break;
 	case 27: glutDestroyWindow(winId); break;
 	}
 }
@@ -284,7 +364,6 @@ void updateAsteroid()
 
 glm::mat4 createCameraMatrix()
 {
-	// Obliczanie kierunku patrzenia kamery (w plaszczyznie x-z) przy uzyciu zmiennej cameraAngle kontrolowanej przez klawisze.
 	cameraDir = glm::vec3(cosf(cameraAngle), 0.0f, sinf(cameraAngle));
 	glm::vec3 up = glm::vec3(0, 1, 0);
 
@@ -292,7 +371,6 @@ glm::mat4 createCameraMatrix()
 
 	return Core::createViewMatrix(cameraPos, cameraDir, up);
 }
-
 
 //funkcja rysujaca modele za pomoca assimpa
 void drawFromAssimpModel(GLuint program, std::shared_ptr<Model> model, glm::mat4 modelMatrix)
@@ -491,7 +569,6 @@ void drawBloom()
 	renderQuad();
 }
 
-//funkcja rysujaca planety (bez obracania wokol wlasnej osi bo ksiezyce sie psuja)
 glm::mat4 drawPlanet(float time, glm::vec3 sunPos, glm::vec3 orbit, glm::vec3 translation, glm::vec3 scale)
 {
 	glm::mat4 planetModelMatrix = glm::mat4(1.0f);
@@ -502,7 +579,6 @@ glm::mat4 drawPlanet(float time, glm::vec3 sunPos, glm::vec3 orbit, glm::vec3 tr
 	return planetModelMatrix;
 }
 
-//funkcja rysujaca ksiezyce orbitujace wokol danej planety
 glm::mat4 drawMoon(glm::mat4 planetModelMatrix, float time, glm::vec3 orbit, glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale)
 {
 	glm::mat4 moonModelMatrix = glm::mat4(planetModelMatrix);
@@ -523,24 +599,41 @@ Object* findObject(std::string name)
 	return nullptr;
 }
 
+physx::PxRigidDynamic* getActor(std::string name)
+{
+	cout << "meh " << name << std::endl;
+	for (int i = 0; i < dynamicObjects.size(); i++)
+	{
+		cout << ((Object*)dynamicObjects[i]->userData)->name << std::endl <<std::flush;
+		if (((Object*)dynamicObjects[i]->userData)->name == name)
+			return dynamicObjects[i];
+	}
+	return nullptr;
+}
+
 void updateObjects()
 {
+
 	Object* obj = findObject("Corvette");
-	glm::mat4 shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.7f + glm::vec3(0, -0.25f, 0)) * glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.0001f));
-	obj->modelM = shipModelMatrix;
-	obj->invModelM = glm::inverse(shipModelMatrix);
+	glm::mat4 shipModelMatrix = obj->modelM;
+	//glm::translate(cameraPos + cameraDir * 0.7f + glm::vec3(0, -0.25f, 0)) * glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.0001f));
+	//obj->modelM = shipModelMatrix;
+	obj->invModelM = glm::inverse(obj->modelM);
+	//glm::mat4 offset = glm::translate(shipModelMatrix, glm::vec3(0, 0, 1000));
+	//cameraPos = glm::vec3(offset[3][0], offset[3][1], offset[3][2]);
 
 	glm::mat4 engineLeft = glm::translate(shipModelMatrix, glm::vec3(450, 0, -1500));
 	lights[2].position = glm::vec3(engineLeft[3][0], engineLeft[3][1], engineLeft[3][2]);
 
 	glm::mat4 engineRight = glm::translate(shipModelMatrix, glm::vec3(-450, 0, -1500));
 	lights[3].position = glm::vec3(engineRight[3][0], engineRight[3][1], engineRight[3][2]);
-
+/*
 	obj = findObject("Space Humster");
 	glm::mat4 crewmateModelMatrix = glm::translate(glm::vec3(0, 1, 1)) * glm::rotate(lastTime / 10, glm::vec3(1, 0, 1)) * glm::scale(glm::vec3(0.01));
 	obj->modelM = crewmateModelMatrix;
 	obj->invModelM = glm::inverse(crewmateModelMatrix);
-	
+*/
+
 	//earth & moon
 	glm::mat4 earthModelMatrix = drawPlanet(lastTime / 5.0f, sunPos*glm::vec3(1.5f, 1, 1), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(-10.5f, 0.0f, -10.5f), glm::vec3(0.5f, 0.5f, 0.5f));
 	glm::mat4 moonModelMatrix = drawMoon(earthModelMatrix, lastTime / 2.0f, glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0, 2, 2), glm::vec3(1.5f, 1.0f, 1.0f), glm::vec3(0.3f, 0.3f, 0.3f));
@@ -561,6 +654,50 @@ void updateObjects()
 	obj->invModelM = glm::inverse(marsModelMatrix);
 }
 
+void updatePhysics()
+{
+	auto actorFlags = PxActorTypeFlag::eRIGID_DYNAMIC;// | PxActorTypeFlag::eRIGID_STATIC;
+	PxU32 nbActors = pxScene.scene->getNbActors(actorFlags);
+	if (nbActors)
+	{
+		std::vector<PxRigidActor*> actors(nbActors);
+		pxScene.scene->getActors(actorFlags, (PxActor**)&actors[0], nbActors);
+		for (auto actor : actors)
+		{
+			// We use the userData of the objects to set up the model matrices
+			// of proper renderables.
+			if (!actor->userData) continue;
+			Object *obj = (Object*)actor->userData;
+
+			// get world matrix of the object (actor)
+			PxMat44 transform = actor->getGlobalPose();
+			auto &c0 = transform.column0;
+			auto &c1 = transform.column1;
+			auto &c2 = transform.column2;
+			auto &c3 = transform.column3;
+
+			// set up the model matrix used for the rendering
+			obj->modelM = glm::mat4(
+				c0.x, c0.y, c0.z, c0.w,
+				c1.x, c1.y, c1.z, c1.w,
+				c2.x, c2.y, c2.z, c2.w,
+				c3.x, c3.y, c3.z, c3.w);
+		}
+	}
+}
+
+void updateLights(GLuint program)
+{
+	for (int i = 0; i < lights.size(); i++)
+	{
+		std::string col = "pointLights[" + std::to_string(i) + "].color";
+		std::string pos = "pointLights[" + std::to_string(i) + "].position";
+		std::string ins = "pointLights[" + std::to_string(i) + "].intensity";
+		glUniform3f(glGetUniformLocation(program, col.c_str()), lights[i].color.x, lights[i].color.y, lights[i].color.z);
+		glUniform3f(glGetUniformLocation(program, pos.c_str()), lights[i].position.x, lights[i].position.y, lights[i].position.z);
+		glUniform1f(glGetUniformLocation(program, ins.c_str()), lights[i].intensity);
+	}
+}
 
 void renderScene()
 {
@@ -570,47 +707,34 @@ void renderScene()
 	double delta = time - lastTime;
 	lastTime = time;
 
+	if (delta < 1.f) {
+		physicsTimeToProcess += delta;
+		while (physicsTimeToProcess > 0) {
+			pxScene.step(physicsStepTime);
+			physicsTimeToProcess -= physicsStepTime;
+		}
+	}
+
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
 
 	glBindFramebuffer(GL_FRAMEBUFFER, FBO);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	glUseProgram(programTex);
-
 	glUniform1i(glGetUniformLocation(programTex,"LightsCount"), lights.size());
-	for (int i = 0; i < lights.size(); i++)
-	{
-		std::string col = "pointLights[" + std::to_string(i) + "].color";
-		std::string pos = "pointLights[" + std::to_string(i) + "].position";
-		std::string ins = "pointLights[" + std::to_string(i) + "].intensity";
-		glUniform3f(glGetUniformLocation(programTex, col.c_str()), lights[i].color.x, lights[i].color.y, lights[i].color.z);
-		glUniform3f(glGetUniformLocation(programTex, pos.c_str()), lights[i].position.x, lights[i].position.y, lights[i].position.z);
-		glUniform1f(glGetUniformLocation(programTex, ins.c_str()), lights[i].intensity);
-	}
-
+	updateLights(programTex);
 	glUniform3f(glGetUniformLocation(programTex, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 
-
 	glUseProgram(programNormal);
-
 	glUniform1i(glGetUniformLocation(programNormal, "LightsCount"), lights.size());
-	for (int i = 0; i < lights.size(); i++)
-	{
-		std::string col = "pointLights[" + std::to_string(i) + "].color";
-		std::string pos = "pointLights[" + std::to_string(i) + "].position";
-		std::string ins = "pointLights[" + std::to_string(i) + "].intensity";
-		glUniform3f(glGetUniformLocation(programNormal, col.c_str()), lights[i].color.x, lights[i].color.y, lights[i].color.z);
-		glUniform3f(glGetUniformLocation(programNormal, pos.c_str()), lights[i].position.x, lights[i].position.y, lights[i].position.z);
-		glUniform1f(glGetUniformLocation(programNormal, ins.c_str()), lights[i].intensity);
-	}
-
+	updateLights(programNormal);
 	glUniform3f(glGetUniformLocation(programNormal, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 
 	glUseProgram(programSun);
 	glUniform3f(glGetUniformLocation(programSun, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 
+	updatePhysics();
 	updateObjects();
 
 	for (Object & obj : objects)
@@ -619,24 +743,13 @@ void renderScene()
 	//asteroidpart
 	glUseProgram(programAsteroid);
 	glUniform1i(glGetUniformLocation(programAsteroid, "LightsCount"), lights.size());
-	for (int i = 0; i < lights.size(); i++)
-	{
-		std::string col = "pointLights[" + std::to_string(i) + "].color";
-		std::string pos = "pointLights[" + std::to_string(i) + "].position";
-		std::string ins = "pointLights[" + std::to_string(i) + "].intensity";
-		glUniform3f(glGetUniformLocation(programAsteroid, col.c_str()), lights[i].color.x, lights[i].color.y, lights[i].color.z);
-		glUniform3f(glGetUniformLocation(programAsteroid, pos.c_str()), lights[i].position.x, lights[i].position.y, lights[i].position.z);
-		glUniform1f(glGetUniformLocation(programAsteroid, ins.c_str()), lights[i].intensity);
-	}
-
+	updateLights(programAsteroid);
 	glUniform3f(glGetUniformLocation(programAsteroid, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 	updateAsteroid();
 	drawAsteroids();
 
 	//particlepart
 	glUseProgram(programParticle);
-	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	
 	glm::mat4 transformation = perspectiveMatrix * cameraMatrix;
 	int newparticles = 0;
 
@@ -680,14 +793,10 @@ void renderScene()
 		);
 
 		ParticlesContainer[particleIndex].speed = maindir + randomdir * spread;
-
-
-		// Very bad way to generate a random color
 		ParticlesContainer[particleIndex].r = rand() % 100 + 100;
 		ParticlesContainer[particleIndex].g = 0;
 		ParticlesContainer[particleIndex].b = rand() % 100 + 50;
 		ParticlesContainer[particleIndex].a = (rand() % 256) / 3;
-
 		ParticlesContainer[particleIndex].size = (rand() % 1000) / 50000.0f + 0.01f;
 
 	}
@@ -726,9 +835,7 @@ void renderScene()
 				// Particles that just died will be put at the end of the buffer in SortParticles();
 				p.cameradistance = -1.0f;
 			}
-
 			ParticlesCount++;
-
 		}
 	}
 	
@@ -740,6 +847,63 @@ void renderScene()
 	drawBloom();
 
 	glutSwapBuffers();
+}
+
+glm::vec3 getScale(glm::mat4 modelMatrix)
+{
+	float x = glm::length(glm::vec3(modelMatrix[0][0], modelMatrix[1][0], modelMatrix[2][0]));
+	float y = glm::length(glm::vec3(modelMatrix[0][1], modelMatrix[1][1], modelMatrix[2][1]));
+	float z = glm::length(glm::vec3(modelMatrix[0][2], modelMatrix[1][2], modelMatrix[2][2]));
+
+	return glm::vec3(x, y, z);
+}
+
+glm::vec3 getPosition(glm::mat4 modelMatrix)
+{
+	return glm::vec3(modelMatrix[3][0], modelMatrix[3][1], modelMatrix[3][2]);
+}
+
+physx::PxMat44 transformMat(glm::mat4 mat)
+{
+	float newMat[16] = {mat[0][0], mat[0][1], mat[0][2], mat[0][3],
+						mat[1][0], mat[1][1], mat[1][2], mat[1][3],
+						mat[2][0], mat[2][1], mat[2][2], mat[2][3],
+						mat[3][0], mat[3][1], mat[3][2], mat[3][3] };
+
+	return PxMat44(newMat);
+}
+
+void initPhysics()
+{
+	material = pxScene.physics->createMaterial(0.5, 0.5, 0.5);
+	sphereShape = pxScene.physics->createShape(PxSphereGeometry(1), *material);
+	rectangleShape = pxScene.physics->createShape(PxBoxGeometry(1, 1, 1), *material);
+
+	for (auto &obj : objects)
+	{
+		if (obj.isDynamic == true)
+		{
+			glm::vec3 pos = getPosition(obj.modelM);
+			dynamicObjects.emplace_back(pxScene.physics->createRigidDynamic(PxTransform(pos.x, pos.y, pos.z)));
+			dynamicObjects.back()->setGlobalPose(PxTransform(transformMat(obj.modelM)));
+			dynamicObjects.back()->attachShape(*rectangleShape);
+			dynamicObjects.back()->userData = &obj;
+			dynamicObjects.back()->setLinearVelocity(physx::PxVec3(0, 0, 0));
+			dynamicObjects.back()->setAngularVelocity(physx::PxVec3(0, 0, 0));
+			pxScene.scene->addActor(*dynamicObjects.back());
+		}
+		else
+		{
+			glm::vec3 pos = getPosition(obj.modelM);
+			staticObjects.emplace_back(pxScene.physics->createRigidStatic(PxTransform(pos.x, pos.y, pos.z)));
+			staticObjects.back()->setGlobalPose(PxTransform(transformMat(obj.modelM)));
+			staticObjects.back()->attachShape(*sphereShape);
+			staticObjects.back()->userData = &obj;
+			pxScene.scene->addActor(*staticObjects.back());
+		}
+	}
+	sphereShape->release();
+	rectangleShape->release();
 }
 
 void initAsteroids()
@@ -817,7 +981,6 @@ void initBloom()
 	glGenFramebuffers(1, &FBO);
 	glBindFramebuffer(GL_FRAMEBUFFER, FBO);
 
-
 	glGenTextures(2, colorBuffers);
 	for (unsigned int i = 0; i < 2; i++)
 	{
@@ -865,7 +1028,6 @@ void initBloom()
 void initObjects()
 {
 	Object obj;
-	//ustalanie pozycji slonc (lightPos)
 	glm::mat4 sunModelMatrix = glm::mat4(1.0f);
 	sunModelMatrix = glm::translate(sunModelMatrix, sunPos);
 	sunModelMatrix = glm::scale(sunModelMatrix, glm::vec3(3.0f, 3.0f, 3.0f));
@@ -876,6 +1038,7 @@ void initObjects()
 	obj.textureID = sunTexture;
 	obj.shaderID = programSun;
 	obj.color = glm::vec3(3.5f, 3.8f, 3.8f);
+	obj.isDynamic = false;
 	objects.push_back(obj);
 
 	glm::mat4 sunModelMatrix2 = glm::mat4(1.0f);
@@ -884,6 +1047,7 @@ void initObjects()
 	obj.modelM = sunModelMatrix2;
 	obj.invModelM = glm::inverse(sunModelMatrix2);
 	obj.color = glm::vec3(0.9f, 0.9f, 2.0f);
+	obj.isDynamic = false;
 	objects.push_back(obj);
 
 	glm::mat4 earthModelMatrix;
@@ -897,6 +1061,7 @@ void initObjects()
 	planet.textureID = earthTexture;
 	planet.shaderID = programTex;
 	planet.color = glm::vec3(1.0f);
+	planet.isDynamic = false;
 	objects.push_back(planet);
 
 	glm::mat4 marsModelMatrix;
@@ -908,6 +1073,7 @@ void initObjects()
 	planet.textureID = marsTexture;
 	planet.shaderID = programTex;
 	planet.color = glm::vec3(1.0f);
+	planet.isDynamic = false;
 	objects.push_back(planet);
 
 	Object moon;
@@ -918,9 +1084,10 @@ void initObjects()
 	moon.textureID = moonTexture;
 	moon.shaderID = programTex;
 	moon.color = glm::vec3(1.0f);
+	moon.isDynamic = false;
 	objects.push_back(moon);
 
-	glm::mat4 crewmateModelMatrix;
+	glm::mat4 crewmateModelMatrix = glm::translate(glm::vec3(0, 1, 1)) * glm::rotate(lastTime / 10, glm::vec3(1, 0, 1)) * glm::scale(glm::vec3(0.01));
 
 	Object crewmateObj;
 	crewmateObj.name = "Space Humster";
@@ -929,9 +1096,10 @@ void initObjects()
 	crewmateObj.modelParent = crewmate;
 	crewmateObj.shaderID = programNormal;
 	crewmateObj.color = glm::vec3(1.0f);
+	crewmateObj.isDynamic = true;
 	objects.push_back(crewmateObj);
 
-	glm::mat4 shipModelMatrix;
+	glm::mat4 shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.7f + glm::vec3(0, -0.25f, 0)) * glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.0001f));;
 
 	Object ship;
 	ship.name = "Corvette";
@@ -940,8 +1108,8 @@ void initObjects()
 	ship.modelParent = corvette;
 	ship.shaderID = programNormal;
 	ship.color = glm::vec3(1.0f);
+	ship.isDynamic = true;
 	objects.push_back(ship);
-
 }
 
 void init()
@@ -964,7 +1132,6 @@ void init()
 	glUniform2f(glGetUniformLocation(programBloom, "screenSize"), 1.0f / SCR_WIDTH, 1.0f / SCR_HEIGHT);
 	glUseProgram(0);
 
-
 	corvette = std::make_shared<Model>("models/Corvette-F3.obj");
 	crewmate = std::make_shared<Model>("models/space_humster.obj");
 	asteroid = std::make_shared<Model>("models/Asteroid_X.obj");
@@ -978,11 +1145,11 @@ void init()
 	marsTexture = Core::LoadTexture("models/textures/Mars/2k_mars.png");
 	skyboxTexture = loadCubemap(faces);
 
-
 	initParticles();
 	initBloom();
 	initObjects();
 	initAsteroids();
+	initPhysics();
 
 	Light l1;
 	l1.position = sunPos;
@@ -1012,7 +1179,14 @@ void init()
 
 void shutdown()
 {
-
+	shaderLoader.DeleteProgram(programSun);
+	shaderLoader.DeleteProgram(programParticle);
+	shaderLoader.DeleteProgram(programNormal);
+	shaderLoader.DeleteProgram(programAsteroid);
+	shaderLoader.DeleteProgram(programTex);
+	shaderLoader.DeleteProgram(programBloom);
+	shaderLoader.DeleteProgram(programBlur);
+	shaderLoader.DeleteProgram(programSkybox);
 }
 
 void onReshape(int width, int height)
@@ -1034,25 +1208,17 @@ int main(int argc, char** argv)
 	SCR_WIDTH = screenWidth; SCR_HEIGHT = screenHeight;
 
 	glutInit(&argc, argv);
-	//glutSetOption(GLUT_MULTISAMPLE, 8);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
-	//glEnable(GL_MULTISAMPLE);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glutInitWindowPosition(0, 0);
 	glutInitWindowSize(SCR_WIDTH, SCR_HEIGHT);
-	//glutCreateWindow("GRK-PROJECT WIP");
 	winId = glutCreateWindow("GRK-PROJECT WIP");
 	glutFullScreen();
 	glewInit();
 
-
 	init();
 	glutKeyboardFunc(keyboard);
-	//to sprawia, że obiekty ukryte przed kamerą  nie są renderowane
-	//glEnable(GL_CULL_FACE);
-	//glCullFace(GL_BACK);
-	//glFrontFace(GL_CW);
 
 	glutDisplayFunc(renderScene);
 	glutIdleFunc(idle);
