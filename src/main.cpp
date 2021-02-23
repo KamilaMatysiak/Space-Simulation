@@ -230,7 +230,8 @@ void keyboard(unsigned char key, int x, int y)
 	auto actor = getActor("Corvette");
 	auto move = actor->getLinearVelocity();
 	physx::PxVec3 dir = physx::PxVec3(cameraDir.x, cameraDir.y, cameraDir.z);
-	glm::vec3 cross = glm::cross(cameraDir, glm::vec3(0, 1, 0));
+	physx::PxVec3 up = physx::PxVec3(cameraUp.x, cameraUp.y, cameraUp.z);
+	glm::vec3 cross = glm::cross(cameraDir, cameraUp);
 	physx::PxVec3 dirCross = physx::PxVec3(cross.x, cross.y, cross.z);
 
 	float angleSpeed = 0.1f;
@@ -239,18 +240,18 @@ void keyboard(unsigned char key, int x, int y)
 	{
 	case 'q':
 	{
-		//cameraAngle -= angleSpeed;
-		actor->setAngularVelocity(PxVec3(0.f, -1.f, 0.f));
-		lights[3].intensity = 0.05;
+		actor->setAngularVelocity(PxVec3(0.f, 1.f, 0.f));
+		//cameraAngle += angleSpeed;
+		lights[2].intensity = 0.05;
 		engineLightTimer = 0;
 		break;
 	}
 
 	case 'e':
 	{
-		actor->setAngularVelocity(PxVec3(0.f, 1.f, 0.f));
-		//cameraAngle += angleSpeed;
-		lights[2].intensity = 0.05;
+		//cameraAngle -= angleSpeed;
+		actor->setAngularVelocity(PxVec3(0.f, -1.f, 0.f));
+		lights[3].intensity = 0.05;
 		engineLightTimer = 0;
 		break;
 	}
@@ -270,10 +271,14 @@ void keyboard(unsigned char key, int x, int y)
 	//cameraPos += glm::cross(cameraDir, glm::vec3(0, 1, 0)) * moveSpeed; break;
 	case 'a': actor->setLinearVelocity(move - dirCross); break;
 	//cameraPos -= glm::cross(cameraDir, glm::vec3(0, 1, 0)) * moveSpeed; break;
-	case 'z': actor->setLinearVelocity(PxVec3(move.x, move.y + 3, move.z)); break;
+	case 'z': actor->setLinearVelocity(move + up); break;
 	//cameraPos += glm::cross(cameraDir, glm::vec3(0, 0, 1)) * moveSpeed; break;
-	case 'x': actor->setLinearVelocity(PxVec3(move.x, move.y - 3, move.z)); break;
+	case 'x': actor->setLinearVelocity(move - up); break;
 	//cameraPos -= glm::cross(cameraDir, glm::vec3(0, 0, 1)) * moveSpeed; break;
+	case 'r': actor->setAngularVelocity(PxVec3(1.0f, 0.0f, 0.0f)); break;
+	case 't': actor->setAngularVelocity(PxVec3(0.0f, 0.0f, 1.0f)); break;
+	case 'f': actor->setAngularVelocity(PxVec3(-1.0f, 0.0f, 0.0f)); break;
+	case 'g': actor->setAngularVelocity(PxVec3(0.0f, 0.0f, -1.0f)); break;
 	case ' ':
 	{
 		actor->setLinearVelocity(PxVec3(0, 0, 0));
@@ -364,12 +369,19 @@ glm::mat4 createCameraMatrix()
 	//cameraDir = glm::vec3(cosf(cameraAngle), 0.0f, sinf(cameraAngle));
 	//glm::vec3 up = glm::vec3(0, 1, 0);
 
-	cameraSide = glm::cross(cameraDir, cameraUp);
+
 	Object* ship = findObject("Corvette");
-	
+	glm::mat4 shipModelMatrix = ship->GetMatrix();
+	glm::mat4 offset = glm::translate(shipModelMatrix, glm::vec3(0, -2500, -8000));
+	glm::mat4 cameraDirection = glm::translate(shipModelMatrix, glm::vec3(0, 0, 1000));
+	glm::mat4 cameraUpwards = glm::translate(shipModelMatrix, glm::vec3(0, -1000, 0));
+	cameraDir = glm::vec3(cameraDirection[3][0] - shipModelMatrix[3][0], cameraDirection[3][1] - shipModelMatrix[3][1], cameraDirection[3][2] - shipModelMatrix[3][2]);
+	cameraPos = glm::vec3(offset[3][0], offset[3][1], offset[3][2]);
+	cameraUp = glm::vec3(cameraUpwards[3][0] - shipModelMatrix[3][0], cameraUpwards[3][1] - shipModelMatrix[3][1], cameraUpwards[3][2] - shipModelMatrix[3][2]);
+	cameraSide = glm::cross(cameraDir, cameraUp);
 
 	//return Core::createViewMatrix(cameraPos, cameraDir, up);
-	return glm::lookAt(cameraPos, ship->getPositionFromMatrix(ship->GetMatrix()), cameraUp);
+	return glm::lookAt(cameraPos, ship->getPositionFromMatrix(glm::translate(shipModelMatrix, glm::vec3(0,-500,0))), cameraUp);
 }
 
 void drawAsteroids()
@@ -450,7 +462,7 @@ void drawParticles(int ParticlesCount, glm::mat4 &transformation)
 
 	glUniform1i(glGetUniformLocation(programParticle, "sprite"), 0);
 	glUniform3f(glGetUniformLocation(programParticle, "CameraRight_worldspace"), cameraSide.x, cameraSide.y, cameraSide.z);
-	glUniform3f(glGetUniformLocation(programParticle, "CameraUp_worldspace"), 0, 1, 0);
+	glUniform3f(glGetUniformLocation(programParticle, "CameraUp_worldspace"), cameraUp.x, cameraUp.y, cameraUp.z);
 
 	glUniformMatrix4fv(glGetUniformLocation(programParticle, "VP"), 1, GL_FALSE, &transformation[0][0]);
 
@@ -543,17 +555,10 @@ physx::PxRigidDynamic* getActor(std::string name)
 
 void updateObjects()
 {
-
 	Object* obj = findObject("Corvette");
 	glm::mat4 shipModelMatrix = obj->GetMatrix();
 	//glm::translate(cameraPos + cameraDir * 0.7f + glm::vec3(0, -0.25f, 0)) * glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.0001f));
 	//obj->modelM = shipModelMatrix;
-	glm::mat4 offset = glm::translate(shipModelMatrix, glm::vec3(0, -2500, -8000));
-	glm::mat4 cameraDirection = glm::translate(shipModelMatrix, glm::vec3(0, 0, 1000));
-	glm::mat4 cameraUpwards = glm::translate(shipModelMatrix, glm::vec3(0, -1000, 0));
-	cameraDir = glm::vec3(cameraDirection[3][0] - shipModelMatrix[3][0], cameraDirection[3][1] - shipModelMatrix[3][1], cameraDirection[3][2] - shipModelMatrix[3][2]);
-	cameraPos = glm::vec3(offset[3][0], offset[3][1], offset[3][2]);
-	cameraUp = glm::vec3(cameraUpwards[3][0] - shipModelMatrix[3][0], cameraUpwards[3][1] - shipModelMatrix[3][1], cameraUpwards[3][2] - shipModelMatrix[3][2]);
 
 	glm::mat4 engineLeft = glm::translate(shipModelMatrix, glm::vec3(450, 0, -1500));
 	lights[2].position = glm::vec3(engineLeft[3][0], engineLeft[3][1], engineLeft[3][2]);
@@ -727,7 +732,7 @@ void renderScene()
 			ParticlesContainer[particleIndex].pos = lights[3].position;
 	
 
-		float spread = 0.8;
+		float spread = 0.5;
 		glm::vec3 maindir = -1 * cameraDir;
 		glm::vec3 randomdir = glm::vec3(
 			(rand() % 2000 - 1000.0f) / 5000.0f,
@@ -740,7 +745,7 @@ void renderScene()
 		ParticlesContainer[particleIndex].g = 0;
 		ParticlesContainer[particleIndex].b = rand() % 100 + 50;
 		ParticlesContainer[particleIndex].a = (rand() % 256) / 3;
-		ParticlesContainer[particleIndex].size = (rand() % 1000) / 50000.0f + 0.01f;
+		ParticlesContainer[particleIndex].size = (rand() % 1000) / 5000.0f + 0.01f;
 
 	}
 	// Simulate all particles
@@ -792,31 +797,10 @@ void renderScene()
 	glutSwapBuffers();
 }
 
-physx::PxMat44 transformMat(glm::mat4 mat)
-{
-	float newMat[16] = {mat[0][0], mat[0][1], mat[0][2], mat[0][3],
-						mat[1][0], mat[1][1], mat[1][2], mat[1][3],
-						mat[2][0], mat[2][1], mat[2][2], mat[2][3],
-						mat[3][0], mat[3][1], mat[3][2], mat[3][3] };
-
-	return PxMat44(newMat);
-}
-
-void compareMat(physx::PxMat44 mat1, glm::mat4 mat2)
-{
-	for (int i = 0; i <= 3; i++)
-	{
-		for (int j = 0; j <= 3; j++)
-		{
-			cout << mat1[i][j] << " " << mat2[i][j] << std::endl;
-		}
-	}
-}
-
 void initPhysics()
 {
 	material = pxScene.physics->createMaterial(0.5, 0.5, 0.5);
-	sphereShape = pxScene.physics->createShape(PxSphereGeometry(1), *material);
+
 	rectangleShape = pxScene.physics->createShape(PxBoxGeometry(1, 1, 1), *material);
 
 	for (auto &obj : objects)
@@ -842,6 +826,8 @@ void initPhysics()
 		}
 		else
 		{
+			sphereShape = pxScene.physics->createShape(PxSphereGeometry(obj.GetScale().x), *material);
+			
 			if (obj.isKinematic() == true)
 			{
 				glm::vec3 pos = obj.GetPosition();
@@ -866,14 +852,16 @@ void initPhysics()
 			{
 				glm::vec3 pos = obj.getPositionFromMatrix(obj.GetMatrix());
 				staticObjects.emplace_back(pxScene.physics->createRigidStatic(PxTransform(pos.x, pos.y, pos.z)));
-				staticObjects.back()->setGlobalPose(PxTransform(transformMat(obj.GetMatrix())));
+				physx::PxMat44 mat;
+				mat.setPosition(PxVec3(pos.x, pos.y, pos.z));
+				staticObjects.back()->setGlobalPose(PxTransform(mat));
 				staticObjects.back()->attachShape(*sphereShape);
 				staticObjects.back()->userData = &obj;
 				pxScene.scene->addActor(*staticObjects.back());
 			}
+		sphereShape->release();
 		}
 	}
-	sphereShape->release();
 	rectangleShape->release();
 }
 
@@ -1019,7 +1007,7 @@ void initObjects()
 	objects.push_back(moon);
 
 	Object crewmateObj = Object("Space Humster", crewmate, programNormal, glm::vec3(1.0f), 
-		glm::vec3(-5, 0, 0), glm::vec3(1, 0, 1), glm::vec3(0.01), 0, true, false);
+		glm::vec3(-5, 0, 0), glm::vec3(1, 0, 1), glm::vec3(0.1), 0, true, false);
 	objects.push_back(crewmateObj);
 
 	//glm::mat4 shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.7f + glm::vec3(0, -0.25f, 0)) * glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.0001f));;
