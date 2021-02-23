@@ -82,7 +82,8 @@ Object::Object(	std::string name,
 				glm::vec3 rotation,
 				glm::vec3 scale,
 				float angle,
-				bool dynamic)
+				bool dynamic,
+				bool kinematic)
 {
 	this->name = name;
 	SetMatrix(position, scale, rotation, angle);
@@ -91,6 +92,7 @@ Object::Object(	std::string name,
 	this->shaderID = shaderID;
 	this->color = color;
 	this->dynamic = dynamic;
+	this->kinematic = kinematic;
 }
 
 Object::Object(	std::string name,
@@ -101,7 +103,8 @@ Object::Object(	std::string name,
 				glm::vec3 rotation,
 				glm::vec3 scale,
 				float angle,
-				bool dynamic)
+				bool dynamic,
+				bool kinematic)
 {
 	this->name = name;
 	SetMatrix(position, scale, rotation, angle);
@@ -110,6 +113,7 @@ Object::Object(	std::string name,
 	this->shaderID = shaderID;
 	this->color = color;
 	this->dynamic = dynamic;
+	this->kinematic = kinematic;
 }
 
 

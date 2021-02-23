@@ -30,15 +30,18 @@ public:
 	void SetRotation(glm::vec3 rotate, float angle);
 
 	void SetMatrix(glm::vec3 position, glm::vec3 scale, glm::vec3 rotate, float angle);
-	void SetMatrix(glm::mat4 _mat) { this->modelM = _mat; }
+	void SetMatrix(glm::mat4 _mat) { this->modelM = _mat;
+									this->invModelM = glm::inverseTranspose(_mat); }
 
 	std::string GetName() { return this->name; }
 	glm::mat4 GetMatrix() { return this->modelM; }
 	glm::mat4 GetInvMatrix() { return this->invModelM; }
 	glm::vec3 GetColor() { return this->color; }
 	glm::vec3 GetPosition() { return position; }
+	glm::vec3 GetRotation() { return rotation; }
 	glm::vec3 GetScale() { return scale;  }
 	bool isDynamic() { return dynamic; }
+	bool isKinematic() { return kinematic; }
 	std::shared_ptr<Model> GetParent() { return modelParent; }
 
 	Object(	std::string name,
@@ -50,7 +53,8 @@ public:
 						glm::vec3 rotation,
 						glm::vec3 scale,
 						float angle,
-						bool dynamic);
+						bool dynamic,
+						bool kinematic);
 
 	Object(std::string name,
 		std::shared_ptr<Model> modelParent,
@@ -60,7 +64,8 @@ public:
 		glm::vec3 rotation,
 		glm::vec3 scale,
 		float angle,
-		bool dynamic);
+		bool dynamic,
+		bool kinematic);
 
 	glm::vec3 getScaleFromMatrix(glm::mat4 modelMatrix);
 	glm::vec3 getPositionFromMatrix(glm::mat4 modelMatrix);
@@ -82,5 +87,6 @@ private:
 	glm::vec3 scale;
 	float angle;
 	bool dynamic;
+	bool kinematic;
 
 };

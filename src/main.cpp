@@ -142,6 +142,7 @@ float cameraAngle = 0;
 glm::vec3 cameraPos = glm::vec3(-6, 0, 0);
 glm::vec3 cameraDir;
 glm::vec3 cameraSide;
+glm::vec3 cameraUp;
 glm::mat4 cameraMatrix, perspectiveMatrix;
 
 glm::vec3 sunPos = glm::vec3(10.0f, 0.0f, -5.0f);
@@ -154,6 +155,8 @@ physx::PxMaterial* material;
 std::vector<physx::PxRigidDynamic*> dynamicObjects;
 std::vector<physx::PxRigidStatic*> staticObjects;
 physx::PxRigidDynamic* getActor(std::string name);
+Object* findObject(std::string name);
+glm::mat4 shipRotationMatrix;
 
 //particlepart
 struct Particle {
@@ -227,7 +230,7 @@ void keyboard(unsigned char key, int x, int y)
 	auto actor = getActor("Corvette");
 	auto move = actor->getLinearVelocity();
 	physx::PxVec3 dir = physx::PxVec3(cameraDir.x, cameraDir.y, cameraDir.z);
-	glm::vec3 cross = glm::cross(cameraDir, glm::vec3(0, 0, 1));
+	glm::vec3 cross = glm::cross(cameraDir, glm::vec3(0, 1, 0));
 	physx::PxVec3 dirCross = physx::PxVec3(cross.x, cross.y, cross.z);
 
 	float angleSpeed = 0.1f;
@@ -236,7 +239,8 @@ void keyboard(unsigned char key, int x, int y)
 	{
 	case 'q':
 	{
-		cameraAngle -= angleSpeed;
+		//cameraAngle -= angleSpeed;
+		actor->setAngularVelocity(PxVec3(0.f, -1.f, 0.f));
 		lights[3].intensity = 0.05;
 		engineLightTimer = 0;
 		break;
@@ -244,7 +248,8 @@ void keyboard(unsigned char key, int x, int y)
 
 	case 'e':
 	{
-		cameraAngle += angleSpeed;
+		actor->setAngularVelocity(PxVec3(0.f, 1.f, 0.f));
+		//cameraAngle += angleSpeed;
 		lights[2].intensity = 0.05;
 		engineLightTimer = 0;
 		break;
@@ -269,7 +274,12 @@ void keyboard(unsigned char key, int x, int y)
 	//cameraPos += glm::cross(cameraDir, glm::vec3(0, 0, 1)) * moveSpeed; break;
 	case 'x': actor->setLinearVelocity(PxVec3(move.x, move.y - 3, move.z)); break;
 	//cameraPos -= glm::cross(cameraDir, glm::vec3(0, 0, 1)) * moveSpeed; break;
-	case ' ':actor->setLinearVelocity(PxVec3(0, 0, 0)); break;
+	case ' ':
+	{
+		actor->setLinearVelocity(PxVec3(0, 0, 0));
+		actor->setAngularVelocity(PxVec3(0, 0, 0));
+		break;
+	}
 	case 27: glutDestroyWindow(winId); break;
 	}
 }
@@ -351,12 +361,15 @@ void updateAsteroid()
 
 glm::mat4 createCameraMatrix()
 {
-	cameraDir = glm::vec3(cosf(cameraAngle), 0.0f, sinf(cameraAngle));
-	glm::vec3 up = glm::vec3(0, 1, 0);
+	//cameraDir = glm::vec3(cosf(cameraAngle), 0.0f, sinf(cameraAngle));
+	//glm::vec3 up = glm::vec3(0, 1, 0);
 
-	cameraSide = glm::cross(cameraDir, up);
+	cameraSide = glm::cross(cameraDir, cameraUp);
+	Object* ship = findObject("Corvette");
+	
 
-	return Core::createViewMatrix(cameraPos, cameraDir, up);
+	//return Core::createViewMatrix(cameraPos, cameraDir, up);
+	return glm::lookAt(cameraPos, ship->getPositionFromMatrix(ship->GetMatrix()), cameraUp);
 }
 
 void drawAsteroids()
@@ -508,26 +521,6 @@ void drawBloom()
 	renderQuad();
 }
 
-glm::mat4 drawPlanet(float time, glm::vec3 sunPos, glm::vec3 orbit, glm::vec3 translation, glm::vec3 scale)
-{
-	glm::mat4 planetModelMatrix = glm::mat4(1.0f);
-	planetModelMatrix = glm::translate(planetModelMatrix, sunPos);
-	planetModelMatrix = glm::rotate(planetModelMatrix, time, orbit);
-	planetModelMatrix = glm::translate(planetModelMatrix, translation);
-	planetModelMatrix = glm::scale(planetModelMatrix, scale);
-	return planetModelMatrix;
-}
-
-glm::mat4 drawMoon(glm::mat4 planetModelMatrix, float time, glm::vec3 orbit, glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale)
-{
-	glm::mat4 moonModelMatrix = glm::mat4(planetModelMatrix);
-	moonModelMatrix = glm::rotate(moonModelMatrix, time, orbit);
-	moonModelMatrix = glm::translate(moonModelMatrix, translation);
-	moonModelMatrix = glm::rotate(moonModelMatrix, time, rotation);
-	moonModelMatrix = glm::scale(moonModelMatrix, scale);
-	return moonModelMatrix;
-}
-
 Object* findObject(std::string name)
 {
 	for (int i = 0; i < objects.size(); i++)
@@ -555,42 +548,35 @@ void updateObjects()
 	glm::mat4 shipModelMatrix = obj->GetMatrix();
 	//glm::translate(cameraPos + cameraDir * 0.7f + glm::vec3(0, -0.25f, 0)) * glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.0001f));
 	//obj->modelM = shipModelMatrix;
-	//glm::mat4 offset = glm::translate(shipModelMatrix, glm::vec3(0, 0, 1000));
-	//cameraPos = glm::vec3(offset[3][0], offset[3][1], offset[3][2]);
+	glm::mat4 offset = glm::translate(shipModelMatrix, glm::vec3(0, -2500, -8000));
+	glm::mat4 cameraDirection = glm::translate(shipModelMatrix, glm::vec3(0, 0, 1000));
+	glm::mat4 cameraUpwards = glm::translate(shipModelMatrix, glm::vec3(0, -1000, 0));
+	cameraDir = glm::vec3(cameraDirection[3][0] - shipModelMatrix[3][0], cameraDirection[3][1] - shipModelMatrix[3][1], cameraDirection[3][2] - shipModelMatrix[3][2]);
+	cameraPos = glm::vec3(offset[3][0], offset[3][1], offset[3][2]);
+	cameraUp = glm::vec3(cameraUpwards[3][0] - shipModelMatrix[3][0], cameraUpwards[3][1] - shipModelMatrix[3][1], cameraUpwards[3][2] - shipModelMatrix[3][2]);
 
 	glm::mat4 engineLeft = glm::translate(shipModelMatrix, glm::vec3(450, 0, -1500));
 	lights[2].position = glm::vec3(engineLeft[3][0], engineLeft[3][1], engineLeft[3][2]);
 
 	glm::mat4 engineRight = glm::translate(shipModelMatrix, glm::vec3(-450, 0, -1500));
 	lights[3].position = glm::vec3(engineRight[3][0], engineRight[3][1], engineRight[3][2]);
-/*
-	obj = findObject("Space Humster");
-	glm::mat4 crewmateModelMatrix = glm::translate(glm::vec3(0, 1, 1)) * glm::rotate(lastTime / 10, glm::vec3(1, 0, 1)) * glm::scale(glm::vec3(0.01));
-	obj->modelM = crewmateModelMatrix;
-	obj->invModelM = glm::inverse(crewmateModelMatrix);
-*/
-	//earth & moon
-	//glm::mat4 earthModelMatrix = drawPlanet(lastTime / 5.0f, sunPos*glm::vec3(1.5f, 1, 1), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(-10.5f, 0.0f, -10.5f), glm::vec3(0.5f, 0.5f, 0.5f));
-	//glm::mat4 moonModelMatrix = drawMoon(earthModelMatrix, lastTime / 2.0f, glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0, 2, 2), glm::vec3(1.5f, 1.0f, 1.0f), glm::vec3(0.3f, 0.3f, 0.3f));
-	//earthModelMatrix = glm::rotate(earthModelMatrix, lastTime / 5.0f, glm::vec3(0.0f, 0.0f, 0.1f));
 
 	Object *moon = findObject("Moon");
 	Object *earth = findObject("Earth");
 
-	//auto earthPos = glm::vec3(-10.5f, 0.0f, -10.5f);
 	auto earthPos = earth->findOrbit(lastTime / 5.0f, sunPos, glm::vec3(0, 1, 0), glm::vec3(-10.5f, 0.0f, -10.5f));
 	earth->SetPosition(earthPos);
 	earth->SetRotation(glm::vec3(0, 0, 1), lastTime);
+	auto actorEarth = getActor("Earth");
+	actorEarth->setKinematicTarget(PxTransform(PxVec3(earthPos.x, earthPos.y, earthPos.z)));
 
 	auto moonPos = moon->findOrbit(lastTime, earthPos, glm::vec3(1,0,0), glm::vec3(0, 1.5, 0));
 	moon->SetPosition(moonPos);
 	moon->SetRotation(glm::vec3(1, 0, 0), lastTime / 5.0f);
+	auto actorMoon = getActor("Moon");
+	actorMoon->setKinematicTarget(PxTransform(PxVec3(moonPos.x, moonPos.y, moonPos.z)));
 
-
-	Object *mars = findObject("Mars");
-	glm::mat4 marsModelMatrix = drawPlanet(lastTime / 5.0f, sunPos2, glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(-6.5f, 0.0f, -6.5f), glm::vec3(0.4f, 0.4f, 0.4f));
-	marsModelMatrix = glm::rotate(marsModelMatrix, lastTime / 3.0f, glm::vec3(0.0f, 0.0f, 1.0f));
-	
+	Object *mars = findObject("Mars");	
 	auto marsPos = mars->findOrbit(lastTime / 5.0f, sunPos2, glm::vec3(0, 1, 0), glm::vec3(-6.5f, 0.0f, -6.5f));
 	mars->SetPosition(marsPos);
 	mars->SetRotation(glm::vec3(0, 0, 1), lastTime / 2.0f);
@@ -610,21 +596,33 @@ void updatePhysics()
 			// of proper renderables.
 			if (!actor->userData) continue;
 			Object *obj = (Object*)actor->userData;
-
+			if (obj->isKinematic() == true)
+				continue;
 			// get world matrix of the object (actor)
-			PxMat44 transform = actor->getGlobalPose();
-			auto &c0 = transform.column0;
-			auto &c1 = transform.column1;
-			auto &c2 = transform.column2;
-			auto &c3 = transform.column3;
+			PxTransform transform = actor->getGlobalPose();
+			//auto &c0 = transform.column0;
+			//auto &c1 = transform.column1;
+			//auto &c2 = transform.column2;
+			//auto &c3 = transform.column3;
+
+			physx::PxVec3 pxPos = transform.p;
+			glm::vec3 pos(pxPos.x, pxPos.y, pxPos.z);
+			physx::PxQuat rot = transform.q;
+			glm::quat rotQuat = glm::quat(rot.x, rot.y, rot.z, rot.w);
+			glm::mat4 rotationMatrix = glm::toMat4(rotQuat);
+			if (obj->GetName() == "Corvette")
+				shipRotationMatrix = rotationMatrix;
+			
+			glm::vec3 scale = obj->GetScale();
+			glm::mat4 model = glm::translate(pos)*rotationMatrix*glm::scale(scale);
 
 			// set up the model matrix used for the rendering
-			obj->GetMatrix() = glm::mat4(
+			obj->SetMatrix(model);/* = glm::mat4(
 				c0.x, c0.y, c0.z, c0.w,
 				c1.x, c1.y, c1.z, c1.w,
 				c2.x, c2.y, c2.z, c2.w,
 				c3.x, c3.y, c3.z, c3.w);
-		}
+	*/	}
 	}
 }
 
@@ -825,25 +823,54 @@ void initPhysics()
 	{
 		if (obj.isDynamic() == true)
 		{
-			glm::vec3 pos = obj.getPositionFromMatrix(obj.GetMatrix());
-			dynamicObjects.emplace_back(pxScene.physics->createRigidDynamic(PxTransform(pos.x, pos.y, pos.z)));
-			auto trans2 = transformMat(obj.GetMatrix());
-			auto trans = PxTransform(trans2);
-			dynamicObjects.back()->setGlobalPose(trans);
-			dynamicObjects.back()->attachShape(*rectangleShape);
-			dynamicObjects.back()->userData = &obj;
-			dynamicObjects.back()->setLinearVelocity(physx::PxVec3(0, 0, 0));
-			dynamicObjects.back()->setAngularVelocity(physx::PxVec3(0, 0, 0));
-			pxScene.scene->addActor(*dynamicObjects.back());
+			glm::vec3 pos = obj.GetPosition();
+			glm::vec3 rot = obj.GetRotation();
+			auto dynamicObj = pxScene.physics->createRigidDynamic(PxTransform(pos.x, pos.y, pos.z));
+			physx::PxMat44 mat;
+			mat.setPosition(PxVec3(pos.x, pos.y, pos.z));
+			mat.rotate(PxVec3(rot.x, rot.y, rot.z));
+			dynamicObj->setGlobalPose(PxTransform(mat));
+			dynamicObj->attachShape(*rectangleShape);
+			dynamicObj->userData = &obj;
+			dynamicObj->setLinearVelocity(physx::PxVec3(0, 0, 0));
+			dynamicObj->setAngularVelocity(physx::PxVec3(0, 0, 0));
+			dynamicObj->setAngularDamping(1.0);
+			dynamicObj->setLinearDamping(1.0);
+			pxScene.scene->addActor(*dynamicObj);
+
+			dynamicObjects.push_back(dynamicObj);
 		}
 		else
 		{
-			glm::vec3 pos = obj.getPositionFromMatrix(obj.GetMatrix());
-			staticObjects.emplace_back(pxScene.physics->createRigidStatic(PxTransform(pos.x, pos.y, pos.z)));
-			staticObjects.back()->setGlobalPose(PxTransform(transformMat(obj.GetMatrix())));
-			staticObjects.back()->attachShape(*sphereShape);
-			staticObjects.back()->userData = &obj;
-			pxScene.scene->addActor(*staticObjects.back());
+			if (obj.isKinematic() == true)
+			{
+				glm::vec3 pos = obj.GetPosition();
+				glm::vec3 rot = obj.GetRotation();
+				auto dynamicObj = pxScene.physics->createRigidDynamic(PxTransform(pos.x, pos.y, pos.z));
+				dynamicObj->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, true);
+				physx::PxMat44 mat;
+				mat.setPosition(PxVec3(pos.x, pos.y, pos.z));
+				mat.rotate(PxVec3(rot.x, rot.y, rot.z));
+				dynamicObj->setGlobalPose(PxTransform(mat));
+				dynamicObj->attachShape(*rectangleShape);
+				dynamicObj->userData = &obj;
+				dynamicObj->setLinearVelocity(physx::PxVec3(0, 0, 0));
+				dynamicObj->setAngularVelocity(physx::PxVec3(0, 0, 0));
+				dynamicObj->setAngularDamping(1.0);
+				dynamicObj->setLinearDamping(1.0);
+				pxScene.scene->addActor(*dynamicObj);
+
+				dynamicObjects.push_back(dynamicObj);
+			}
+			else
+			{
+				glm::vec3 pos = obj.getPositionFromMatrix(obj.GetMatrix());
+				staticObjects.emplace_back(pxScene.physics->createRigidStatic(PxTransform(pos.x, pos.y, pos.z)));
+				staticObjects.back()->setGlobalPose(PxTransform(transformMat(obj.GetMatrix())));
+				staticObjects.back()->attachShape(*sphereShape);
+				staticObjects.back()->userData = &obj;
+				pxScene.scene->addActor(*staticObjects.back());
+			}
 		}
 	}
 	sphereShape->release();
@@ -972,32 +999,32 @@ void initBloom()
 void initObjects()
 {
 	Object obj = Object("BigSun", sphere, sunTexture, programSun, glm::vec3(3.5f, 3.8f, 3.8f),
-		sunPos, glm::vec3(0.1f), glm::vec3(3.0f, 3.0f, 3.0f), 0.0f, false);
+		sunPos, glm::vec3(0.1f), glm::vec3(3.0f, 3.0f, 3.0f), 0.0f, false, false);
 	objects.push_back(obj);
 
 	obj = Object("SmollSun", sphere, sunTexture, programSun, glm::vec3(0.9f, 0.9f, 2.0f), 
-		sunPos2, glm::vec3(0.1f), glm::vec3(1), 0, false);
+		sunPos2, glm::vec3(0.1f), glm::vec3(1), 0, false, false);
 	objects.push_back(obj);
 
 	Object planet = Object("Earth", sphere, earthTexture, programTex, glm::vec3(1.0f), 
-		glm::vec3(-10.5f, 0.0f, -10.5f), glm::vec3(0.0f, 0.0f, 0.1f), glm::vec3(0.5f, 0.5f, 0.5f), 0, false);
+		glm::vec3(-10.5f, 0.0f, -10.5f), glm::vec3(0.0f, 0.0f, 0.1f), glm::vec3(0.5f, 0.5f, 0.5f), 0, false, true);
 	objects.push_back(planet);
 
 	planet = Object("Mars", sphere, marsTexture, programTex, glm::vec3(1.0f), 
-		glm::vec3(-6.5f, 0.0f, -6.5f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.4f), 0, false);
+		glm::vec3(-6.5f, 0.0f, -6.5f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.4f), 0, false, true);
 	objects.push_back(planet);
 
 	Object moon = Object("Moon", sphere, moonTexture, programTex, glm::vec3(1.0f), 
-		glm::vec3(0, 2, 2), glm::vec3(1.5f, 1.0f, 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), 0, false);
+		glm::vec3(0, 2, 2), glm::vec3(1.5f, 1.0f, 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), 0, false, true);
 	objects.push_back(moon);
 
 	Object crewmateObj = Object("Space Humster", crewmate, programNormal, glm::vec3(1.0f), 
-		glm::vec3(0, 1, 1), glm::vec3(1, 0, 1), glm::vec3(0.01), 0, true);
+		glm::vec3(-5, 0, 0), glm::vec3(1, 0, 1), glm::vec3(0.01), 0, true, false);
 	objects.push_back(crewmateObj);
 
 	//glm::mat4 shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.7f + glm::vec3(0, -0.25f, 0)) * glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.0001f));;
 	Object ship = Object("Corvette", corvette, programNormal, glm::vec3(1.0f), 
-		cameraPos+glm::vec3(0.6,-0.3,0), glm::vec3(0, 1, 0), glm::vec3(0.0001f), 75, true);
+		cameraPos+glm::vec3(-10,-0.3,0), glm::vec3(0, 1, 0), glm::vec3(0.0001f), 75, true, false);
 	objects.push_back(ship);
 }
 
