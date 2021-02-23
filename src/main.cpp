@@ -369,7 +369,6 @@ glm::mat4 createCameraMatrix()
 	//cameraDir = glm::vec3(cosf(cameraAngle), 0.0f, sinf(cameraAngle));
 	//glm::vec3 up = glm::vec3(0, 1, 0);
 
-
 	Object* ship = findObject("Corvette");
 	glm::mat4 shipModelMatrix = ship->GetMatrix();
 	glm::mat4 offset = glm::translate(shipModelMatrix, glm::vec3(0, -2500, -8000));
@@ -377,8 +376,8 @@ glm::mat4 createCameraMatrix()
 	glm::mat4 cameraUpwards = glm::translate(shipModelMatrix, glm::vec3(0, -1000, 0));
 	cameraDir = glm::vec3(cameraDirection[3][0] - shipModelMatrix[3][0], cameraDirection[3][1] - shipModelMatrix[3][1], cameraDirection[3][2] - shipModelMatrix[3][2]);
 	cameraPos = glm::vec3(offset[3][0], offset[3][1], offset[3][2]);
-	cameraUp = glm::vec3(cameraUpwards[3][0] - shipModelMatrix[3][0], cameraUpwards[3][1] - shipModelMatrix[3][1], cameraUpwards[3][2] - shipModelMatrix[3][2]);
-	cameraSide = glm::cross(cameraDir, cameraUp);
+	cameraUp = glm::normalize(glm::vec3(cameraUpwards[3][0] - shipModelMatrix[3][0], cameraUpwards[3][1] - shipModelMatrix[3][1], cameraUpwards[3][2] - shipModelMatrix[3][2]));
+	cameraSide = glm::normalize(glm::cross(cameraDir, cameraUp));
 
 	//return Core::createViewMatrix(cameraPos, cameraDir, up);
 	return glm::lookAt(cameraPos, ship->getPositionFromMatrix(glm::translate(shipModelMatrix, glm::vec3(0,-500,0))), cameraUp);
@@ -682,9 +681,6 @@ void renderScene()
 	updatePhysics();
 	updateObjects();
 
-	//for (Object & obj : objects)
-	//	drawObject(obj);
-
 	for (Object &obj : objects)
 		obj.Draw(perspectiveMatrix, cameraMatrix);
 
@@ -745,7 +741,7 @@ void renderScene()
 		ParticlesContainer[particleIndex].g = 0;
 		ParticlesContainer[particleIndex].b = rand() % 100 + 50;
 		ParticlesContainer[particleIndex].a = (rand() % 256) / 3;
-		ParticlesContainer[particleIndex].size = (rand() % 1000) / 5000.0f + 0.01f;
+		ParticlesContainer[particleIndex].size = (rand() % 1000) / 50000.0f + 0.01f;
 
 	}
 	// Simulate all particles
@@ -1078,7 +1074,6 @@ void init()
 	l4.color = glm::vec3(1.0f, 0.0f, 0.0f);
 	l4.intensity = 0.001;
 	lights.push_back(l4);
-
 }
 
 void shutdown()
