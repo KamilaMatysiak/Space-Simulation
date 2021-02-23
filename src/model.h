@@ -1,31 +1,27 @@
 #pragma once
-
-
-
+#include <iostream>
+#include <cmath>
+#include <string>
+#include <fstream>
+#include <sstream>
+#include <map>
+#include <vector>
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
 
 #include "glew.h"
 #include "freeglut.h"
 #include "glm.hpp"
 #include "ext.hpp"
-#include <iostream>
-#include <cmath>
-#include <assimp/Importer.hpp>
-#include <assimp/scene.h>
-#include <assimp/postprocess.h>
-
 #include "stb_image.h"
 #include "mesh.h"
 
-#include <string>
-#include <fstream>
-#include <sstream>
-#include <iostream>
-#include <map>
-#include <vector>
+
 using namespace std;
 
 
-unsigned int TextureFromFile(const char* path, const string& directory, bool gamma = false);
+static unsigned int TextureFromFile(const char* path, const string& directory, bool gamma = false);
 
 class Model
 {
@@ -216,7 +212,7 @@ private:
 };
 
 
-unsigned int TextureFromFile(const char* path, const string& directory, bool gamma)
+static unsigned int TextureFromFile(const char* path, const string& directory, bool gamma)
 {
     string filename = string(path);
     filename = directory + '/' + filename;
