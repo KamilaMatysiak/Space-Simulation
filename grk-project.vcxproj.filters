@@ -66,6 +66,12 @@
     <None Include="shaders\shader_asteroid.vert">
       <Filter>Shader Files</Filter>
     </None>
+    <None Include="shaders\shader_parallax.frag">
+      <Filter>Shader Files</Filter>
+    </None>
+    <None Include="shaders\shader_parallax.vert">
+      <Filter>Shader Files</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Box.cpp">
@@ -130,14 +136,8 @@
     <ClInclude Include="src\Physics.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="Object.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\Object.h">
       <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\main.h">
-      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -10,10 +10,15 @@ void Object::Draw(glm::mat4 perspectiveMatrix, glm::mat4 cameraMatrix)
 
 	glUniformMatrix4fv(glGetUniformLocation(shaderID, "modelMatrix"), 1, GL_FALSE, (float*)&modelM);
 	glUniformMatrix4fv(glGetUniformLocation(shaderID, "transformation"), 1, GL_FALSE, (float*)&transformation);
+	glUniformMatrix3fv(glGetUniformLocation(shaderID, "normalMatrix"), 1, GL_FALSE, (float*)&invModelM);
 
 	glUniform3f(glGetUniformLocation(shaderID, "objectColor"), color.r, color.g, color.b);
-	if (textureID != -1)
-		Core::SetActiveTexture(textureID, "diffuseTexture", shaderID, 0);
+	if (textureDiffuseID != -1)
+		Core::SetActiveTexture(textureDiffuseID, "diffuseTexture", shaderID, 0);
+	if (textureNormalID != -1)
+		Core::SetActiveTexture(textureNormalID, "normalTexture", shaderID, 1);
+	if (textureDepthID != -1)
+		Core::SetActiveTexture(textureDepthID, "depthTexture", shaderID, 2);
 
 	modelParent->Draw(shaderID);
 	glUseProgram(0);
@@ -90,7 +95,7 @@ Object::Object(	std::string name,
 	this->name = name;
 	SetMatrix(position, scale, rotation, angle);
 	this->modelParent = modelParent;
-	this->textureID = textureID;
+	this->textureDiffuseID = textureID;
 	this->shaderID = shaderID;
 	this->color = color;
 	this->dynamic = dynamic;
@@ -110,7 +115,7 @@ Object::Object(	std::string name,
 {
 	this->name = name;
 	SetMatrix(position, scale, rotation, angle);
-	this->textureID = -1;
+	this->textureDiffuseID = -1;
 	this->modelParent = modelParent;
 	this->shaderID = shaderID;
 	this->color = color;
