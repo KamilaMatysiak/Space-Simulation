@@ -36,6 +36,7 @@ GLuint programBloom;
 GLuint programNormal;
 GLuint programParticle;
 GLuint programAsteroid;
+GLuint programParallax;
 
 //bloompart
 unsigned int pingpongFBO[2];
@@ -56,6 +57,8 @@ bool bothEngines = true;
 //textures
 GLuint sunTexture;
 GLuint earthTexture;
+GLuint earthNormalTexture;
+GLuint earthSpecularTexture;
 GLuint marsTexture;
 GLuint moonTexture;
 GLuint skyboxTexture;
@@ -133,6 +136,10 @@ struct Object
 	glm::mat4 invModelM;
 	std::shared_ptr<Model> modelParent;
 	GLuint textureID;
+	//part for parallax mapping
+	GLuint textureNormal = -1;
+	GLuint textureSpecular = -1;
+	//end of part
 	GLuint shaderID;
 	glm::vec3 color;
 };
@@ -220,6 +227,8 @@ void renderQuad()
 			 1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
 			 1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
 		};
+		glm::vec3 nm(0.0f, 0.0f, 1.0f);
+
 		glGenVertexArrays(1, &quadVAO);
 		glGenBuffers(1, &quadVBO);
 		glBindVertexArray(quadVAO);
@@ -328,16 +337,28 @@ void drawFromAssimpTexture(GLuint program, std::shared_ptr<Model> model, glm::ma
 void drawObject(Object & obj)
 {
 	glUseProgram(obj.shaderID);
-
 	glm::mat4 transformation = perspectiveMatrix * cameraMatrix * obj.modelM;
-
-	glUniformMatrix4fv(glGetUniformLocation(obj.shaderID, "modelMatrix"), 1, GL_FALSE, (float*)&obj.modelM);
 	glUniformMatrix4fv(glGetUniformLocation(obj.shaderID, "transformation"), 1, GL_FALSE, (float*)&transformation);
-	
-	glUniform3f(glGetUniformLocation(obj.shaderID, "objectColor"), obj.color.r, obj.color.g, obj.color.b);
-	if (obj.textureID != -1)
-		Core::SetActiveTexture(obj.textureID, "diffuseTexture", obj.shaderID, 0);
+	glUniformMatrix4fv(glGetUniformLocation(obj.shaderID, "modelMatrix"), 1, GL_FALSE, (float*)&obj.modelM);
 
+	if (obj.shaderID == programParallax)
+	{
+		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+		glUniformMatrix4fv(glGetUniformLocation(obj.shaderID, "projection"), 1, GL_FALSE, (float*)&perspectiveMatrix);
+		glUniformMatrix4fv(glGetUniformLocation(obj.shaderID, "view"), 1, GL_FALSE, (float*)&cameraMatrix);
+		glUniformMatrix4fv(glGetUniformLocation(obj.shaderID, "viewPos"), 1, GL_FALSE, (float*)&cameraPos);
+		glUniformMatrix4fv(glGetUniformLocation(obj.shaderID, "lightPos"), 1, GL_FALSE, (float*)&lights);
+		glUniformMatrix4fv(glGetUniformLocation(obj.shaderID, "heightScale"), 1, GL_FALSE, (float*)&cameraPos[1]);
+		Core::SetActiveTexture(obj.textureID, "diffuseTexture", obj.shaderID, 1);
+		Core::SetActiveTexture(obj.textureNormal, "normalTexture", obj.shaderID, 0);
+		Core::SetActiveTexture(obj.textureSpecular, "depthTexture", obj.shaderID, 2);
+	}
+	else
+	{
+		glUniform3f(glGetUniformLocation(obj.shaderID, "objectColor"), obj.color.r, obj.color.g, obj.color.b);
+		if (obj.textureID != -1)
+			Core::SetActiveTexture(obj.textureID, "diffuseTexture", obj.shaderID, 0);
+	}
 	obj.modelParent->Draw(obj.shaderID);
 	glUseProgram(0);
 }
@@ -391,6 +412,7 @@ unsigned int loadCubemap(std::vector<std::string> faces)
 
 	return textureID;
 }
+
 void drawSkybox(GLuint program, std::shared_ptr<Model> cubeModel, GLuint texID)
 {
 	glUseProgram(program);
@@ -895,7 +917,9 @@ void initObjects()
 	planet.invModelM = glm::inverse(earthModelMatrix);
 	planet.modelParent = sphere;
 	planet.textureID = earthTexture;
-	planet.shaderID = programTex;
+	planet.textureNormal = earthNormalTexture;
+	planet.textureSpecular = earthSpecularTexture;
+	planet.shaderID = programParallax;
 	planet.color = glm::vec3(1.0f);
 	objects.push_back(planet);
 
@@ -955,6 +979,7 @@ void init()
 	programBloom = shaderLoader.CreateProgram("shaders/shader_bloom.vert", "shaders/shader_bloom.frag");
 	programParticle = shaderLoader.CreateProgram("shaders/shader_particle.vert", "shaders/shader_particle.frag");
 	programAsteroid = shaderLoader.CreateProgram("shaders/shader_asteroid.vert", "shaders/shader_asteroid.frag");
+	programParallax = shaderLoader.CreateProgram("shaders/shader_parallax.vert", "shaders/shader_parallax.frag");
 
 	glUseProgram(programBlur);
 	glUniform1i(glGetUniformLocation(programBlur, "image"), 0);
@@ -962,7 +987,12 @@ void init()
 	glUniform1i(glGetUniformLocation(programBloom, "scene"), 0);
 	glUniform1i(glGetUniformLocation(programBloom, "bloomBlur"), 1);
 	glUniform2f(glGetUniformLocation(programBloom, "screenSize"), 1.0f / SCR_WIDTH, 1.0f / SCR_HEIGHT);
+	glUseProgram(programParallax);
+	glUniform1i(glGetUniformLocation(programParallax, "diffuseMap"), 0);
+	glUniform1i(glGetUniformLocation(programParallax, "normalMap"), 1);
+	glUniform1i(glGetUniformLocation(programParallax, "depthMap"), 2);
 	glUseProgram(0);
+	
 
 
 	corvette = std::make_shared<Model>("models/Corvette-F3.obj");
@@ -973,6 +1003,8 @@ void init()
 
 	sunTexture = Core::LoadTexture("textures/sun.png");
 	earthTexture = Core::LoadTexture("textures/earth2.png");
+	earthNormalTexture = Core::LoadTexture("textures/earth2_normal.png");
+	earthSpecularTexture = Core::LoadTexture("textures/earth2_specular.png");
 	moonTexture = Core::LoadTexture("textures/moon.png");
 	particleTexture = Core::LoadTexture("textures/sun.png");
 	marsTexture = Core::LoadTexture("models/textures/Mars/2k_mars.png");
@@ -1022,6 +1054,7 @@ void onReshape(int width, int height)
 	frustumScale = (float)width / (float)height;
 	glViewport(0, 0, width, height);
 }
+
 void idle()
 {
 	glutPostRedisplay();
