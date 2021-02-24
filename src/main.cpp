@@ -204,12 +204,12 @@ std::vector<glm::mat4> asteroidsMatrixes;
 //wczytywanie skyboxa (musi byc jpg!)
 std::vector<std::string> faces
 {
-	"skybox/right.jpg",
-	"skybox/left.jpg",
-	"skybox/top.jpg",
-	"skybox/bottom.jpg",
-	"skybox/front.jpg",
-	"skybox/back.jpg"
+	"skybox/right1.jpg",
+	"skybox/left1.jpg",
+	"skybox/top1.jpg",
+	"skybox/bottom1.jpg",
+	"skybox/front1.jpg",
+	"skybox/back1.jpg"
 };
 
 void keyboard(unsigned char key, int x, int y)
