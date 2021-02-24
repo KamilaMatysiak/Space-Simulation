@@ -19,6 +19,7 @@ class Object
 {
 public:
 
+
 	void Draw(glm::mat4 perspectiveMatrix, glm::mat4 cameraMatrix);
 	void ChangePosition(glm::vec3 movement);
 	void SetPosition(glm::vec3 position);
@@ -44,36 +45,20 @@ public:
 	bool isKinematic() { return kinematic; }
 	std::shared_ptr<Model> GetParent() { return modelParent; }
 
-	Object(	std::string name,
-						std::shared_ptr<Model> modelParent,
-						GLuint textureID,
-						GLuint shaderID,
-						glm::vec3 color,
-						glm::vec3 position,
-						glm::vec3 rotation,
-						glm::vec3 scale,
-						float angle,
-						bool dynamic,
-						bool kinematic);
+	Object(	std::string name, std::shared_ptr<Model> modelParent, GLuint textureID, GLuint shaderID, glm::vec3 color,
+						glm::vec3 position,	glm::vec3 rotation, glm::vec3 scale, float angle, bool dynamic, bool kinematic);
 
-	Object(std::string name,
-		std::shared_ptr<Model> modelParent,
-		GLuint shaderID,
-		glm::vec3 color,
-		glm::vec3 position,
-		glm::vec3 rotation,
-		glm::vec3 scale,
-		float angle,
-		bool dynamic,
-		bool kinematic);
+	Object(std::string name, std::shared_ptr<Model> modelParent, GLuint shaderID, glm::vec3 color, glm::vec3 position,
+		glm::vec3 rotation, glm::vec3 scale, float angle, bool dynamic, bool kinematic);
 
+	bool exists = true;
 	glm::vec3 getScaleFromMatrix(glm::mat4 modelMatrix);
 	glm::vec3 getPositionFromMatrix(glm::mat4 modelMatrix);
 	glm::vec3 findOrbit(float time, glm::vec3 center, glm::vec3 orbit, glm::vec3 radius);
+
 private:
 
 	void SetMatrix();
-
 	std::shared_ptr<Model> modelParent;
 
 	std::string name;

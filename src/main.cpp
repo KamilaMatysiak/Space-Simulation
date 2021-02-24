@@ -20,6 +20,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
+physx::PxRigidDynamic* getActor(std::string name);
 static PxFilterFlags simulationFilterShader(PxFilterObjectAttributes attributes0,
 	PxFilterData filterData0, PxFilterObjectAttributes attributes1, PxFilterData filterData1,
 	PxPairFlags& pairFlags, const void* constantBlock, PxU32 constantBlockSize)
@@ -43,30 +44,15 @@ public:
 		// using pairHeader.actors[0] and pairHeader.actors[1]
 		auto ac = pairHeader.actors[0];
 		auto ac2 = pairHeader.actors[1];
-		/*if (ac->userData == renderables.back() || ac2->userData == renderables.back())
+		auto actorName1 = ((Object*)ac->userData)->GetName();
+		auto actorName2 = ((Object*)ac2->userData)->GetName();
+		if ((actorName1 == "Space Humster" && actorName2 == "Corvette") || (actorName2 == "Space Humster" && actorName1 == "Corvette"))
 		{
-			std::cout << "Liczba CP:" << nbPairs << std::endl;
-
-			for (PxU32 i = 0; i < nbPairs; i++)
-			{
-				const PxContactPair& cp = pairs[i];
-
-				// HINT: two get the contact points, use
-				// PxContactPair::extractContacts
-
-				std::vector<PxContactPairPoint> buffer;
-				for (int i = 0; i < cp.contactCount; i++)
-					buffer.push_back(PxContactPairPoint());
-
-				cp.extractContacts(&buffer[0], sizeof(buffer));
-
-				for (int i = 0; i < buffer.size(); i++)
-				{
-					auto position = buffer[i].position;
-					std::cout << position.x << ' ' << position.y << ' ' << position.x << std::endl;
-				}
-			}
-		}*/
+			cout << "Znalazles chomika! :)" << endl;
+			auto humster = getActor("Space Humster");
+			((Object*)humster->userData)->exists = false;
+			humster->setActorFlag(PxActorFlag::eDISABLE_SIMULATION, true);
+		}
 	}
 	virtual void onConstraintBreak(PxConstraintInfo* constraints, PxU32 count) {}
 	virtual void onWake(PxActor** actors, PxU32 count) {}
@@ -154,7 +140,6 @@ physx::PxShape* sphereShape;
 physx::PxMaterial* material;
 std::vector<physx::PxRigidDynamic*> dynamicObjects;
 std::vector<physx::PxRigidStatic*> staticObjects;
-physx::PxRigidDynamic* getActor(std::string name);
 Object* findObject(std::string name);
 glm::mat4 shipRotationMatrix;
 
@@ -796,13 +781,17 @@ void renderScene()
 void initPhysics()
 {
 	material = pxScene.physics->createMaterial(0.5, 0.5, 0.5);
-
-	rectangleShape = pxScene.physics->createShape(PxBoxGeometry(1, 1, 1), *material);
-
+	
 	for (auto &obj : objects)
 	{
 		if (obj.isDynamic() == true)
 		{
+			if (obj.GetName() == "Space Humster")
+				rectangleShape = pxScene.physics->createShape(PxBoxGeometry(0.3f, 0.3f, 0.3f), *material);
+			else if (obj.GetName() == "Corvette")
+				rectangleShape = pxScene.physics->createShape(PxBoxGeometry(0.5f, 0.5f, 0.5f), *material);
+			else rectangleShape = pxScene.physics->createShape(PxBoxGeometry(1, 1, 1), *material);
+
 			glm::vec3 pos = obj.GetPosition();
 			glm::vec3 rot = obj.GetRotation();
 			auto dynamicObj = pxScene.physics->createRigidDynamic(PxTransform(pos.x, pos.y, pos.z));
@@ -819,6 +808,7 @@ void initPhysics()
 			pxScene.scene->addActor(*dynamicObj);
 
 			dynamicObjects.push_back(dynamicObj);
+			rectangleShape->release();
 		}
 		else
 		{
@@ -834,7 +824,7 @@ void initPhysics()
 				mat.setPosition(PxVec3(pos.x, pos.y, pos.z));
 				mat.rotate(PxVec3(rot.x, rot.y, rot.z));
 				dynamicObj->setGlobalPose(PxTransform(mat));
-				dynamicObj->attachShape(*rectangleShape);
+				dynamicObj->attachShape(*sphereShape);
 				dynamicObj->userData = &obj;
 				dynamicObj->setLinearVelocity(physx::PxVec3(0, 0, 0));
 				dynamicObj->setAngularVelocity(physx::PxVec3(0, 0, 0));
@@ -858,7 +848,7 @@ void initPhysics()
 		sphereShape->release();
 		}
 	}
-	rectangleShape->release();
+
 }
 
 void initAsteroids()

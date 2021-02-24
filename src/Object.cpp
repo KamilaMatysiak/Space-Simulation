@@ -2,6 +2,8 @@
 
 void Object::Draw(glm::mat4 perspectiveMatrix, glm::mat4 cameraMatrix)
 {
+	if (!exists) return;
+
 	glUseProgram(shaderID);
 
 	glm::mat4 transformation = perspectiveMatrix * cameraMatrix * modelM;
