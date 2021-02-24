@@ -106,6 +106,9 @@ GLuint sunTexture;
 GLuint earthTexture;
 GLuint marsTexture;
 GLuint moonTexture;
+GLuint icyTexture;
+GLuint neptunTexture;
+GLuint jowisTexture;
 GLuint skyboxTexture;
 GLuint particleTexture;
 
@@ -118,7 +121,7 @@ std::shared_ptr<Model> crewmate;
 
 //asteroids
 GLuint bufferAsteroids;
-int asteroidAmount = 100;
+int asteroidAmount = 500;
 
 int engineLightTimer = 50;
 float frustumScale = 1.f;
@@ -132,7 +135,7 @@ glm::vec3 cameraUp;
 glm::mat4 cameraMatrix, perspectiveMatrix;
 
 glm::vec3 sunPos = glm::vec3(10.0f, 0.0f, -5.0f);
-glm::vec3 sunPos2 = glm::vec3(25.0f, -1.0f, 10.0f);
+glm::vec3 sunPos2 = glm::vec3(45.0f, -10.0f, 20.0f);
 
 //physics
 physx::PxShape* rectangleShape;
@@ -141,7 +144,6 @@ physx::PxMaterial* material;
 std::vector<physx::PxRigidDynamic*> dynamicObjects;
 std::vector<physx::PxRigidStatic*> staticObjects;
 Object* findObject(std::string name);
-glm::mat4 shipRotationMatrix;
 
 //particlepart
 struct Particle {
@@ -351,21 +353,15 @@ void updateAsteroid()
 
 glm::mat4 createCameraMatrix()
 {
-	//cameraDir = glm::vec3(cosf(cameraAngle), 0.0f, sinf(cameraAngle));
-	//glm::vec3 up = glm::vec3(0, 1, 0);
-
 	Object* ship = findObject("Corvette");
-	glm::mat4 shipModelMatrix = ship->GetMatrix();
-	glm::mat4 offset = glm::translate(shipModelMatrix, glm::vec3(0, -2500, -8000));
-	glm::mat4 cameraDirection = glm::translate(shipModelMatrix, glm::vec3(0, 0, 1000));
-	glm::mat4 cameraUpwards = glm::translate(shipModelMatrix, glm::vec3(0, -1000, 0));
-	cameraDir = glm::vec3(cameraDirection[3][0] - shipModelMatrix[3][0], cameraDirection[3][1] - shipModelMatrix[3][1], cameraDirection[3][2] - shipModelMatrix[3][2]);
-	cameraPos = glm::vec3(offset[3][0], offset[3][1], offset[3][2]);
-	cameraUp = glm::normalize(glm::vec3(cameraUpwards[3][0] - shipModelMatrix[3][0], cameraUpwards[3][1] - shipModelMatrix[3][1], cameraUpwards[3][2] - shipModelMatrix[3][2]));
-	cameraSide = glm::normalize(glm::cross(cameraDir, cameraUp));
 
-	//return Core::createViewMatrix(cameraPos, cameraDir, up);
-	return glm::lookAt(cameraPos, ship->getPositionFromMatrix(glm::translate(shipModelMatrix, glm::vec3(0,-500,0))), cameraUp);
+	auto rotationM = ship->getRotationM();
+	cameraPos = glm::mat3(rotationM) * glm::vec3(0, -0.5, -1.5f) + ship->GetPosition();
+	cameraDir = glm::mat3(rotationM) * glm::vec3(0, 0, 1);
+	cameraUp = glm::mat3(rotationM) * glm::vec3(0, -1, 0);
+	cameraSide = glm::normalize(glm::cross(cameraDir, cameraUp));
+	glm::vec3 cameraLookAt = glm::mat3(rotationM) * glm::vec3(0, -0.5, 0.25) + ship->GetPosition();
+	return glm::lookAt(cameraPos, cameraLookAt, cameraUp);
 }
 
 void drawAsteroids()
@@ -553,7 +549,7 @@ void updateObjects()
 	Object *moon = findObject("Moon");
 	Object *earth = findObject("Earth");
 
-	auto earthPos = earth->findOrbit(lastTime / 5.0f, sunPos, glm::vec3(0, 1, 0), glm::vec3(-10.5f, 0.0f, -10.5f));
+	auto earthPos = earth->findOrbit(lastTime / 5.0f, sunPos, glm::vec3(0, 1, 0), glm::vec3(-20.5f, 0.0f, -20.5f));
 	earth->SetPosition(earthPos);
 	earth->SetRotation(glm::vec3(0, 0, 1), lastTime);
 	auto actorEarth = getActor("Earth");
@@ -569,6 +565,36 @@ void updateObjects()
 	auto marsPos = mars->findOrbit(lastTime / 5.0f, sunPos2, glm::vec3(0, 1, 0), glm::vec3(-6.5f, 0.0f, -6.5f));
 	mars->SetPosition(marsPos);
 	mars->SetRotation(glm::vec3(0, 0, 1), lastTime / 2.0f);
+
+	Object *jowis = findObject("Jowis");
+	Object *jowisMoon1 = findObject("MoonJup1");
+	Object *jowisMoon2 = findObject("MoonJup2");
+
+	auto jowisPos = jowis->findOrbit(lastTime / 15.0f, sunPos, glm::vec3(0, 1, 0), glm::vec3(-55.5f, 2.0f, -55.5f));
+	jowis->SetPosition(jowisPos);
+	jowis->SetRotation(glm::vec3(0, 0, 1), lastTime/2.0f);
+
+	auto jowisMoon1Pos = jowisMoon1->findOrbit(lastTime, jowisPos, glm::vec3(1, 0, 0), glm::vec3(0, 3.5, 0));
+	jowisMoon1->SetPosition(jowisMoon1Pos);
+	jowisMoon1->SetRotation(glm::vec3(1, 0, 0), lastTime / 4.0f);
+	auto actorMoon1Jowis = getActor("MoonJup1");
+	actorMoon1Jowis->setKinematicTarget(PxTransform(PxVec3(jowisMoon1Pos.x, jowisMoon1Pos.y, jowisMoon1Pos.z)));
+
+	auto jowisMoon2Pos = jowisMoon2->findOrbit(lastTime, jowisPos, glm::vec3(-1, 0, 0), glm::vec3(0, 5, 0));
+	jowisMoon2->SetPosition(jowisMoon2Pos);
+	jowisMoon2->SetRotation(glm::vec3(1, 0, 0), lastTime / 5.0f);
+	auto actorMoon2Jowis = getActor("MoonJup2");
+	actorMoon2Jowis->setKinematicTarget(PxTransform(PxVec3(jowisMoon2Pos.x, jowisMoon2Pos.y, jowisMoon2Pos.z)));
+
+	Object *neptun = findObject("Neptun");
+	auto neptunPos = neptun->findOrbit(lastTime / 17.0f, sunPos, glm::vec3(0, 1, 0), glm::vec3(-85.5f, -2.0f, -85.5f));
+	neptun->SetPosition(neptunPos);
+	neptun->SetRotation(glm::vec3(1, 0, 0), lastTime / 2.0f);
+
+	Object *deadstar = findObject("Dead star");
+	auto starPos = deadstar->findOrbit(lastTime / 35.0f, sunPos, glm::vec3(0, 1, 0), glm::vec3(-135.5f, 0.0f, -135.5f));
+	deadstar->SetPosition(starPos);
+	deadstar->SetRotation(glm::vec3(0, 0, 1), lastTime / 12.0f);
 }
 
 void updatePhysics()
@@ -599,8 +625,8 @@ void updatePhysics()
 			physx::PxQuat rot = transform.q;
 			glm::quat rotQuat = glm::quat(rot.x, rot.y, rot.z, rot.w);
 			glm::mat4 rotationMatrix = glm::toMat4(rotQuat);
-			if (obj->GetName() == "Corvette")
-				shipRotationMatrix = rotationMatrix;
+			obj->manualSetRotationM(rotationMatrix);
+			obj->manualSetPosition(pos);
 			
 			glm::vec3 scale = obj->GetScale();
 			glm::mat4 model = glm::translate(pos)*rotationMatrix*glm::scale(scale);
@@ -854,8 +880,8 @@ void initPhysics()
 void initAsteroids()
 {
 	int amount = asteroidAmount;
-	float radius = 7.0;
-	float offset = 2.0f;
+	float radius = 15.0;
+	float offset = 3.0f;
 
 	for (int i=0; i < amount; i++)
 	{
@@ -872,7 +898,7 @@ void initAsteroids()
 		float z = cos(angle) * radius + displacement;
 		model = glm::translate(model, glm::vec3(x, y, z));
 
-		float scale = (rand() % 20) / 100.0f + 0.05;
+		float scale = (rand() % 20) / 100.0f + 0.2;
 		model = glm::scale(model, glm::vec3(scale));
 
 		float rotAngle = (rand() % 360);
@@ -973,11 +999,11 @@ void initBloom()
 void initObjects()
 {
 	Object obj = Object("BigSun", sphere, sunTexture, programSun, glm::vec3(3.5f, 3.8f, 3.8f),
-		sunPos, glm::vec3(0.1f), glm::vec3(3.0f, 3.0f, 3.0f), 0.0f, false, false);
+		sunPos, glm::vec3(0.1f), glm::vec3(5.0f), 0.0f, false, false);
 	objects.push_back(obj);
 
 	obj = Object("SmollSun", sphere, sunTexture, programSun, glm::vec3(0.9f, 0.9f, 2.0f), 
-		sunPos2, glm::vec3(0.1f), glm::vec3(1), 0, false, false);
+		sunPos2, glm::vec3(0.1f), glm::vec3(2.5f), 0, false, false);
 	objects.push_back(obj);
 
 	Object planet = Object("Earth", sphere, earthTexture, programTex, glm::vec3(1.0f), 
@@ -988,8 +1014,28 @@ void initObjects()
 		glm::vec3(-6.5f, 0.0f, -6.5f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.4f), 0, false, true);
 	objects.push_back(planet);
 
+	planet = Object("Jowis", sphere, jowisTexture, programTex, glm::vec3(1.0f),
+		glm::vec3(-20.5f, 0.0f, -6.5f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(2.5f), 0, false, true);
+	objects.push_back(planet);
+
+	planet = Object("Neptun", sphere, neptunTexture, programTex, glm::vec3(1.0f),
+		glm::vec3(-40.5f, 0.0f, -6.5f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.7f), 0, false, true);
+	objects.push_back(planet);
+
+	planet = Object("Dead star", sphere, icyTexture, programTex, glm::vec3(1.0f),
+		glm::vec3(-60.5f, 0.0f, -60.5f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(5.0f), 0, false, true);
+	objects.push_back(planet);
+
 	Object moon = Object("Moon", sphere, moonTexture, programTex, glm::vec3(1.0f), 
 		glm::vec3(0, 2, 2), glm::vec3(1.5f, 1.0f, 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), 0, false, true);
+	objects.push_back(moon);
+
+	moon = Object("MoonJup1", sphere, moonTexture, programTex, glm::vec3(1.0f),
+		glm::vec3(0, 2, 2), glm::vec3(1.5f, 1.0f, 1.0f), glm::vec3(0.4f), 0, false, true);
+	objects.push_back(moon);
+
+	moon = Object("MoonJup2", sphere, moonTexture, programTex, glm::vec3(1.0f),
+		glm::vec3(0, 2, 2), glm::vec3(1.5f, 1.0f, 1.0f), glm::vec3(0.3f), 0, false, true);
 	objects.push_back(moon);
 
 	Object crewmateObj = Object("Space Humster", crewmate, programNormal, glm::vec3(1.0f), 
@@ -998,7 +1044,7 @@ void initObjects()
 
 	//glm::mat4 shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.7f + glm::vec3(0, -0.25f, 0)) * glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.0001f));;
 	Object ship = Object("Corvette", corvette, programNormal, glm::vec3(1.0f), 
-		cameraPos+glm::vec3(-10,-0.3,0), glm::vec3(0, 1, 0), glm::vec3(0.0001f), 75, true, false);
+		cameraPos+glm::vec3(75,-0.3,50), glm::vec3(0, 1, 0), glm::vec3(0.0001f), 60, true, false);
 	objects.push_back(ship);
 }
 
@@ -1032,7 +1078,10 @@ void init()
 	earthTexture = Core::LoadTexture("textures/earth2.png");
 	moonTexture = Core::LoadTexture("textures/moon.png");
 	particleTexture = Core::LoadTexture("textures/sun.png");
+	icyTexture = Core::LoadTexture("textures/icy.png");
 	marsTexture = Core::LoadTexture("models/textures/Mars/2k_mars.png");
+	jowisTexture = Core::LoadTexture("models/textures/Jupiter/2k_jupiter.png");
+	neptunTexture = Core::LoadTexture("models/textures/Neptune/2k_neptune.png");
 	skyboxTexture = loadCubemap(faces);
 
 	initParticles();
@@ -1044,13 +1093,13 @@ void init()
 	Light l1;
 	l1.position = sunPos;
 	l1.color = glm::vec3(0.8f, 0.8f, 0.7f);
-	l1.intensity = 105;
+	l1.intensity = 450;
 	lights.push_back(l1);
 
 	Light l2;
 	l2.position = sunPos2;
 	l2.color = glm::vec3(0.5f, 0.5f, 0.5f);
-	l2.intensity = 55;
+	l2.intensity = 155;
 	lights.push_back(l2);
 
 	Light l3;

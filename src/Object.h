@@ -34,6 +34,10 @@ public:
 	void SetMatrix(glm::mat4 _mat) { this->modelM = _mat;
 									this->invModelM = glm::inverseTranspose(_mat); }
 
+	void manualSetRotationM(glm::mat4 rot) {this->rotationM = rot;}
+	void manualSetPosition(glm::vec3 pos) { this->position = pos; }
+	glm::mat4 getRotationM() { return rotationM; }
+
 	std::string GetName() { return this->name; }
 	glm::mat4 GetMatrix() { return this->modelM; }
 	glm::mat4 GetInvMatrix() { return this->invModelM; }
@@ -60,10 +64,10 @@ private:
 
 	void SetMatrix();
 	std::shared_ptr<Model> modelParent;
-
 	std::string name;
 	glm::mat4 modelM;
 	glm::mat4 invModelM;
+	glm::mat4 rotationM;
 	GLuint textureID;
 	GLuint shaderID;
 	glm::vec3 color;

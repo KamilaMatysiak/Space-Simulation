@@ -57,7 +57,7 @@ vec3 fastAA()
 
 void main()
 {             
-    const float gamma = 0.9f;
+    const float gamma = 0.7f;
     vec3 hdrColor = fastAA(); //texture(scene, vTexCoords).rgb;      
     vec3 bloomColor = texture(bloomBlur, vTexCoords).rgb;
     hdrColor += bloomColor;
