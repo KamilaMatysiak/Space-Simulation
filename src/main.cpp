@@ -2,6 +2,7 @@
 #include <cmath>
 #include <ctime>
 #include <vector>
+#include <string>
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
@@ -19,6 +20,12 @@
 #include <WinUser.h>
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+//Text handling
+int msgId = 0;
+int checkTimer = 360;
+int frames = 0;
+const char* screenMsg[4] = { "Znajdz zaloganta w pasie asteroid", "Znalazles zaloganta!",
+							 "Uszkodzenie oslon termicznych", "Zderzenie z duzym obiektem" };
 
 physx::PxRigidDynamic* getActor(std::string name);
 static PxFilterFlags simulationFilterShader(PxFilterObjectAttributes attributes0,
@@ -48,7 +55,8 @@ public:
 		auto actorName2 = ((Object*)ac2->userData)->GetName();
 		if ((actorName1 == "Space Humster" && actorName2 == "Corvette") || (actorName2 == "Space Humster" && actorName1 == "Corvette"))
 		{
-			cout << "Znalazles chomika! :)" << endl;
+			checkTimer = frames + 240;
+			msgId = 1;
 			auto humster = getActor("Space Humster");
 			((Object*)humster->userData)->exists = false;
 			humster->setActorFlag(PxActorFlag::eDISABLE_SIMULATION, true);
@@ -74,6 +82,7 @@ int SCR_WIDTH = 1240;
 int SCR_HEIGHT = 720;
 int winId;
 Core::Shader_Loader shaderLoader;
+
 
 //shader programs
 GLuint programTex;
@@ -164,6 +173,7 @@ int LastUsedParticle = 0;
 void SortParticles() {
 	std::sort(&ParticlesContainer[0], &ParticlesContainer[MaxParticles]);
 }
+
 
 int FindUnusedParticle() {
 
@@ -654,6 +664,16 @@ void updateLights(GLuint program)
 	}
 }
 
+void output()
+{
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
+	glLoadIdentity();
+	glColor3f(0.0, 1.0, 0.0);
+	glRasterPos2f(-0.1, 0);
+	glutBitmapString(GLUT_BITMAP_TIMES_ROMAN_24, (unsigned char*)screenMsg[msgId]);
+}
+
 void renderScene()
 {
 	cameraMatrix = createCameraMatrix();
@@ -670,9 +690,14 @@ void renderScene()
 		}
 	}
 
+	
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
+	frames++;
+	if (frames<checkTimer)
+	{
+		output();
+	}
 	glBindFramebuffer(GL_FRAMEBUFFER, FBO);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -803,6 +828,7 @@ void renderScene()
 
 	glutSwapBuffers();
 }
+
 
 void initPhysics()
 {
@@ -1039,7 +1065,7 @@ void initObjects()
 	objects.push_back(moon);
 
 	Object crewmateObj = Object("Space Humster", crewmate, programNormal, glm::vec3(1.0f), 
-		glm::vec3(-5, 0, 0), glm::vec3(1, 0, 1), glm::vec3(0.1), 0, true, false);
+		glm::vec3(-5, 0, 0), glm::vec3(1, 0, 1), glm::vec3(1.1), 0, true, false);
 	objects.push_back(crewmateObj);
 
 	//glm::mat4 shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.7f + glm::vec3(0, -0.25f, 0)) * glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.0001f));;
