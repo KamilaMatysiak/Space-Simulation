@@ -42,10 +42,8 @@
     <ClCompile Include="src\Texture.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Object.h" />
     <ClInclude Include="Skybox.h" />
     <ClInclude Include="src\Camera.h" />
-    <ClInclude Include="src\main.h" />
     <ClInclude Include="src\mesh.h" />
     <ClInclude Include="src\model.h" />
     <ClInclude Include="src\Object.h" />

@@ -56,6 +56,10 @@ public:
 		glm::vec3 rotation, glm::vec3 scale, float angle, bool dynamic, bool kinematic);
 
 	bool exists = true;
+	GLuint textureDiffuseID = -1;
+	GLuint textureNormalID = -1;
+	GLuint textureDepthID = -1;
+
 	glm::vec3 getScaleFromMatrix(glm::mat4 modelMatrix);
 	glm::vec3 getPositionFromMatrix(glm::mat4 modelMatrix);
 	glm::vec3 findOrbit(float time, glm::vec3 center, glm::vec3 orbit, glm::vec3 radius);
@@ -66,9 +70,8 @@ private:
 	std::shared_ptr<Model> modelParent;
 	std::string name;
 	glm::mat4 modelM;
-	glm::mat4 invModelM;
+	glm::mat3 invModelM;
 	glm::mat4 rotationM;
-	GLuint textureID;
 	GLuint shaderID;
 	glm::vec3 color;
 	glm::vec3 position;

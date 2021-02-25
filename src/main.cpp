@@ -93,6 +93,7 @@ GLuint programBloom;
 GLuint programNormal;
 GLuint programParticle;
 GLuint programAsteroid;
+GLuint programParallax;
 
 //bloompart
 unsigned int pingpongFBO[2];
@@ -653,6 +654,7 @@ void updatePhysics()
 
 void updateLights(GLuint program)
 {
+	glUniform1i(glGetUniformLocation(program, "LightsCount"), lights.size());
 	for (int i = 0; i < lights.size(); i++)
 	{
 		std::string col = "pointLights[" + std::to_string(i) + "].color";
@@ -702,14 +704,17 @@ void renderScene()
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	glUseProgram(programTex);
-	glUniform1i(glGetUniformLocation(programTex,"LightsCount"), lights.size());
+
 	updateLights(programTex);
 	glUniform3f(glGetUniformLocation(programTex, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 
 	glUseProgram(programNormal);
-	glUniform1i(glGetUniformLocation(programNormal, "LightsCount"), lights.size());
 	updateLights(programNormal);
 	glUniform3f(glGetUniformLocation(programNormal, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
+
+	glUseProgram(programParallax);
+	updateLights(programParallax);
+	glUniform3f(glGetUniformLocation(programParallax, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
 
 	glUseProgram(programSun);
 	glUniform3f(glGetUniformLocation(programSun, "cameraPos"), cameraPos.x, cameraPos.y, cameraPos.z);
@@ -1064,12 +1069,12 @@ void initObjects()
 		glm::vec3(0, 2, 2), glm::vec3(1.5f, 1.0f, 1.0f), glm::vec3(0.3f), 0, false, true);
 	objects.push_back(moon);
 
-	Object crewmateObj = Object("Space Humster", crewmate, programNormal, glm::vec3(1.0f), 
-		glm::vec3(-5, 0, 0), glm::vec3(1, 0, 1), glm::vec3(1.1), 0, true, false);
+	Object crewmateObj = Object("Space Humster", crewmate, programParallax, glm::vec3(1.0f), 
+		glm::vec3(-5, 0, 0), glm::vec3(1, 0, 1), glm::vec3(0.1), 0, true, false);
 	objects.push_back(crewmateObj);
 
 	//glm::mat4 shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.7f + glm::vec3(0, -0.25f, 0)) * glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.0001f));;
-	Object ship = Object("Corvette", corvette, programNormal, glm::vec3(1.0f), 
+	Object ship = Object("Corvette", corvette, programParallax, glm::vec3(1.0f), 
 		cameraPos+glm::vec3(75,-0.3,50), glm::vec3(0, 1, 0), glm::vec3(0.0001f), 60, true, false);
 	objects.push_back(ship);
 }
@@ -1085,6 +1090,8 @@ void init()
 	programBloom = shaderLoader.CreateProgram("shaders/shader_bloom.vert", "shaders/shader_bloom.frag");
 	programParticle = shaderLoader.CreateProgram("shaders/shader_particle.vert", "shaders/shader_particle.frag");
 	programAsteroid = shaderLoader.CreateProgram("shaders/shader_asteroid.vert", "shaders/shader_asteroid.frag");
+	programParallax = shaderLoader.CreateProgram("shaders/shader_parallax.vert", "shaders/shader_parallax.frag");
+
 
 	glUseProgram(programBlur);
 	glUniform1i(glGetUniformLocation(programBlur, "image"), 0);
