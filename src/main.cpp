@@ -83,6 +83,8 @@ public:
 			(actorName1 == "Mars" && actorName2 == "Corvette") || (actorName2 == "Mars" && actorName1 == "Corvette")|| 
 			(actorName1 == "Jowis" && actorName2 == "Corvette") || (actorName2 == "Jowis" && actorName1 == "Corvette")|| 
 			(actorName1 == "Neptun" && actorName2 == "Corvette") || (actorName2 == "Neptun" && actorName1 == "Corvette")|| 
+			(actorName1 == "planet1" && actorName2 == "Corvette") || (actorName2 == "planet1" && actorName1 == "Corvette")|| 
+			(actorName1 == "planet2" && actorName2 == "Corvette") || (actorName2 == "planet2" && actorName1 == "Corvette")|| 
 			(actorName1 == "Dead star" && actorName2 == "Corvette") || (actorName2 == "Dead star" && actorName1 == "Corvette")|| 
 			(actorName1 == "MoonJup1" && actorName2 == "Corvette") || (actorName2 == "MoonJup1" && actorName1 == "Corvette")|| 
 			(actorName1 == "MoonJup2" && actorName2 == "Corvette") || (actorName2 == "MoonJup2" && actorName1 == "Corvette")|| 
@@ -93,7 +95,6 @@ public:
 		}
 		else if ((actorName1 == "stargate" && actorName2 == "Corvette") || (actorName2 == "stargate" && actorName1 == "Corvette"))
 		{
-			std::cout << "123";
 			checkTimer = frames + 240;
 			if (status == 6)
 			{
