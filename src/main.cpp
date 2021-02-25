@@ -24,8 +24,10 @@
 int msgId = 0;
 int checkTimer = 360;
 int frames = 0;
-const char* screenMsg[4] = { "Znajdz zaloganta w pasie asteroid", "Znalazles zaloganta!",
-							 "Uszkodzenie oslon termicznych", "Zderzenie z duzym obiektem" };
+int status = 4;
+const char* screenMsg[8] = {"Znajdz zaloganta w pasie asteroid", "Znalazles zaloganta!",
+							"Uszkodzenie oslon termicznych", "Zderzenie z duzym obiektem",
+							"Brak zaloganta na pokladzie", "Znajdz drugiego zaloganta", "Zwroc zalogantow do bazy","Koniec gry. Gratulacje!"};
 
 physx::PxRigidDynamic* getActor(std::string name);
 static PxFilterFlags simulationFilterShader(PxFilterObjectAttributes attributes0,
@@ -57,9 +59,37 @@ public:
 		{
 			checkTimer = frames + 240;
 			msgId = 1;
+			status++;
 			auto humster = getActor("Space Humster");
 			((Object*)humster->userData)->exists = false;
 			humster->setActorFlag(PxActorFlag::eDISABLE_SIMULATION, true);
+		}
+		else if ((actorName1 == "humster" && actorName2 == "Corvette") || (actorName2 == "humster" && actorName1 == "Corvette"))
+		{
+			checkTimer = frames + 240;
+			msgId = 1;
+			status++;
+			auto humster1 = getActor("humster");
+			((Object*)humster1->userData)->exists = false;
+			humster1->setActorFlag(PxActorFlag::eDISABLE_SIMULATION, true);
+		}
+		else if ((actorName1 == "SmollSun" && actorName2 == "Corvette") || (actorName2 == "SmollSun" && actorName1 == "Corvette") || 
+			(actorName1 == "BigSun" && actorName2 == "Corvette") || (actorName2 == "BigSun" && actorName1 == "Corvette"))
+		{
+			checkTimer = frames + 240;
+			msgId = 2;
+		}
+		else if ((actorName1 == "Earth" && actorName2 == "Corvette") || (actorName2 == "Earth" && actorName1 == "Corvette") || 
+			(actorName1 == "Mars" && actorName2 == "Corvette") || (actorName2 == "Mars" && actorName1 == "Corvette")|| 
+			(actorName1 == "Jowis" && actorName2 == "Corvette") || (actorName2 == "Jowis" && actorName1 == "Corvette")|| 
+			(actorName1 == "Neptun" && actorName2 == "Corvette") || (actorName2 == "Neptun" && actorName1 == "Corvette")|| 
+			(actorName1 == "Dead star" && actorName2 == "Corvette") || (actorName2 == "Dead star" && actorName1 == "Corvette")|| 
+			(actorName1 == "MoonJup1" && actorName2 == "Corvette") || (actorName2 == "MoonJup1" && actorName1 == "Corvette")|| 
+			(actorName1 == "MoonJup2" && actorName2 == "Corvette") || (actorName2 == "MoonJup2" && actorName1 == "Corvette")|| 
+			(actorName1 == "Moon" && actorName2 == "Corvette") || (actorName2 == "Moon" && actorName1 == "Corvette"))
+		{
+			checkTimer = frames + 240;
+			msgId = 3;
 		}
 	}
 	virtual void onConstraintBreak(PxConstraintInfo* constraints, PxU32 count) {}
@@ -667,14 +697,14 @@ void updateLights(GLuint program)
 	}
 }
 
-void output()
+void output(float x, float y, int id)
 {
 	glMatrixMode(GL_MODELVIEW);
 	glPushMatrix();
 	glLoadIdentity();
 	glColor3f(0.0, 1.0, 0.0);
-	glRasterPos2f(-0.1, 0);
-	glutBitmapString(GLUT_BITMAP_TIMES_ROMAN_24, (unsigned char*)screenMsg[msgId]);
+	glRasterPos2f(x,y);
+	glutBitmapString(GLUT_BITMAP_TIMES_ROMAN_24, (unsigned char*)screenMsg[id]);
 }
 
 void renderScene()
@@ -699,8 +729,9 @@ void renderScene()
 	frames++;
 	if (frames<checkTimer)
 	{
-		output();
+		output(-0.1, 0, msgId);
 	}
+	output(-0.99, -0.99, status);
 	glBindFramebuffer(GL_FRAMEBUFFER, FBO);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -1073,7 +1104,7 @@ void initObjects()
 	objects.push_back(moon);
 
 	Object crewmateObj = Object("Space Humster", crewmate, programParallax, glm::vec3(1.0f), 
-		glm::vec3(-5, 0, 0), glm::vec3(1, 0, 1), glm::vec3(0.1), 0, true, false);
+		glm::vec3(-5, 0, 0), glm::vec3(1, 0, 1), glm::vec3(1.1), 0, true, false);
 	objects.push_back(crewmateObj);
 
 	crewmateObj = Object("humster", hamster, programParallax, glm::vec3(1.0f),
