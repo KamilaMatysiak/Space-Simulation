@@ -119,6 +119,7 @@ std::shared_ptr<Model> sphere;
 std::shared_ptr<Model> corvette;
 std::shared_ptr<Model> asteroid;
 std::shared_ptr<Model> crewmate;
+std::shared_ptr<Model> hamster;
 
 //asteroids
 GLuint bufferAsteroids;
@@ -819,6 +820,8 @@ void initPhysics()
 		{
 			if (obj.GetName() == "Space Humster")
 				rectangleShape = pxScene.physics->createShape(PxBoxGeometry(0.3f, 0.3f, 0.3f), *material);
+			if (obj.GetName() == "humster")
+				rectangleShape = pxScene.physics->createShape(PxBoxGeometry(0.3f, 0.3f, 0.3f), *material);
 			else if (obj.GetName() == "Corvette")
 				rectangleShape = pxScene.physics->createShape(PxBoxGeometry(0.5f, 0.5f, 0.5f), *material);
 			else rectangleShape = pxScene.physics->createShape(PxBoxGeometry(1, 1, 1), *material);
@@ -1047,6 +1050,10 @@ void initObjects()
 		glm::vec3(-5, 0, 0), glm::vec3(1, 0, 1), glm::vec3(0.1), 0, true, false);
 	objects.push_back(crewmateObj);
 
+	crewmateObj = Object("humster", hamster, programParallax, glm::vec3(1.0f),
+		glm::vec3(5, 0, 5), glm::vec3(1, 0, 1), glm::vec3(0.1), 0, true, false);
+	objects.push_back(crewmateObj);
+
 	//glm::mat4 shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.7f + glm::vec3(0, -0.25f, 0)) * glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.0001f));;
 	Object ship = Object("Corvette", corvette, programParallax, glm::vec3(1.0f), 
 		cameraPos+glm::vec3(75,-0.3,50), glm::vec3(0, 1, 0), glm::vec3(0.0001f), 60, true, false);
@@ -1077,6 +1084,7 @@ void init()
 
 	corvette = std::make_shared<Model>("models/Corvette-F3.obj");
 	crewmate = std::make_shared<Model>("models/space_humster.obj");
+	hamster = std::make_shared<Model>("models/space_humster_helmetless.obj");
 	asteroid = std::make_shared<Model>("models/Asteroid_X.obj");
 	sphere = std::make_shared<Model>("models/sphere.obj");
 	cube = std::make_shared<Model>("models/cube.obj");
