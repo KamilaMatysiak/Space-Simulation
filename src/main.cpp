@@ -583,7 +583,7 @@ void updateObjects()
 	Object *moon = findObject("Moon");
 	Object *earth = findObject("Earth");
 
-	auto earthPos = earth->findOrbit(lastTime / 5.0f, sunPos, glm::vec3(0, 1, 0), glm::vec3(-20.5f, 0.0f, -20.5f));
+	auto earthPos = earth->findOrbit(lastTime / 5.0f, sunPos, glm::vec3(0, 1, 0), glm::vec3(-25.5f, 0.0f, -25.5f));
 	earth->SetPosition(earthPos);
 	earth->SetRotation(glm::vec3(0, 0, 1), lastTime);
 	auto actorEarth = getActor("Earth");
@@ -639,7 +639,7 @@ void updateObjects()
 	actorPlanet1->setKinematicTarget(PxTransform(PxVec3(planet1Pos.x, planet1Pos.y, planet1Pos.z)));
 
 	Object *planet2 = findObject("planet2");
-	auto planet2Pos = planet2->findOrbit(lastTime / 10.0f, sunPos, glm::vec3(0, 1, 0), glm::vec3(-15.5f, 1.0f, -15.5f));
+	auto planet2Pos = planet2->findOrbit(lastTime / 10.0f, sunPos, glm::vec3(0, 1, 0), glm::vec3(-10.5f, 1.0f, -10.5f));
 	planet2->SetPosition(planet2Pos);
 	planet2->SetRotation(glm::vec3(-1, 0, 0), lastTime/5.0f);
 	auto actorPlanet2 = getActor("planet2");
@@ -960,7 +960,7 @@ void initPhysics()
 void initAsteroids()
 {
 	int amount = asteroidAmount;
-	float radius = 15.0;
+	float radius = 25.0;
 	float offset = 3.0f;
 
 	for (int i=0; i < amount; i++)
@@ -1112,7 +1112,7 @@ void initObjects()
 	objects.push_back(planet);
 
 	planet = Object("planet2", sphere, mercuryTexture, programTex, glm::vec3(1.0f),
-		glm::vec3(-90.5f, 0.0f, -6.5f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(1.2f), 0, false, true);
+		glm::vec3(-90.5f, 0.0f, -6.5f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.4f), 0, false, true);
 	objects.push_back(planet);
 
 	planet = Object("Dead star", sphere, icyTexture, programTex, glm::vec3(1.0f),
@@ -1187,7 +1187,7 @@ void init()
 	marsTexture = Core::LoadTexture("models/textures/Mars/2k_mars.png");
 	jowisTexture = Core::LoadTexture("models/textures/Jupiter/2k_jupiter.png");
 	neptunTexture = Core::LoadTexture("models/textures/Neptune/2k_neptune.png");
-	venusTexture = Core::LoadTexture("models/textures/Mercury/2k_venus.png");
+	venusTexture = Core::LoadTexture("models/textures/Venus/2k_venus_surface.png");
 	mercuryTexture = Core::LoadTexture("models/textures/Mercury/2k_mercury.png");
 
 	parallax_diffuse = Core::LoadTexture("textures/parallax_diffuse.png");
