@@ -36,7 +36,7 @@ vec2 ParallaxMapping(vec2 texCoords, vec3 viewDir)
     // depth of current layer
     float currentLayerDepth = 0.0;
     // the amount to shift the texture coordinates per layer (from vector P)
-    vec2 P = viewDir.xy / viewDir.z * 0.00001; 
+    vec2 P = viewDir.xy / viewDir.z * 0.001; 
     vec2 deltaTexCoords = P / numLayers;
   
     // get initial values
@@ -79,7 +79,7 @@ void main()
 	//vec3 texture = vec3(textureColor.x, textureColor.y, textureColor.z);
 	vec3 ambient = vec3(0.1, 0.1, 0.1) * texture;
 
-    vec3 normal = texture2D(normalTexture, vTexCoord).rgb;
+    vec3 normal = texture2D(normalTexture, texCoords).rgb;
     normal = normalize(normal * 2.0 - 1.0);
 	for(int i = 0; i < LightsCount; i++)
 	{
@@ -92,7 +92,7 @@ void main()
 		float distance = (1/dist) * (1/dist);
 	
 		float spec = pow(max(0,dot(R,V)),2);
-		float diff = max(0,dot(normal,normalize(lightDir)));
+		float diff = max(0,dot(normal,lightDir));
 
 		vec3 diffuse = pointLights[i].color * diff * distance * pointLights[i].intensity;
 		vec3 specular = spec * pointLights[i].color * (pointLights[i].intensity/dist);

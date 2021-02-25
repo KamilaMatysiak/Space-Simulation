@@ -39,15 +39,13 @@ void main()
 	// then retrieve perpendicular vector B with the cross product of T and N
 	vec3 B = cross(N, T);
 
-	mat3 TBN = mat3(T, B, N);
+	mat3 TBN = transpose(mat3(T, B, N));
 
 	for(int i=0; i<LightsCount; i++)
 		LightPosTS[i] = TBN * pointLights[i].position;
 
+	fragPos = (modelMatrix*vec4(vertexPosition,1)).xyz;
     CameraPosTS  = TBN * cameraPos;
     FragPosTS  = TBN * fragPos;
-
-
-	fragPos = (modelMatrix*vec4(vertexPosition,1)).xyz;
 	vTexCoord = vertexTexCoord;
 }

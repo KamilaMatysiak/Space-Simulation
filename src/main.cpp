@@ -25,9 +25,9 @@ int msgId = 0;
 int checkTimer = 360;
 int frames = 0;
 int status = 4;
-const char* screenMsg[8] = {"Znajdz zaloganta w pasie asteroid", "Znalazles zaloganta!",
+const char* screenMsg[10] = {"Znajdz zaloganta w pasie asteroid", "Znalazles zaloganta!",
 							"Uszkodzenie oslon termicznych", "Zderzenie z duzym obiektem",
-							"Brak zaloganta na pokladzie", "Znajdz drugiego zaloganta", "Zwroc zalogantow do bazy","Koniec gry. Gratulacje!"};
+							"Brak zaloganta na pokladzie", "Znajdz drugiego zaloganta", "Zwroc zalogantow do bazy","Zalogant nadal w pasie asteroid","Koniec gry. Gratulacje!","Mozesz jeszcze pozwiedzac"};
 
 physx::PxRigidDynamic* getActor(std::string name);
 static PxFilterFlags simulationFilterShader(PxFilterObjectAttributes attributes0,
@@ -91,6 +91,24 @@ public:
 			checkTimer = frames + 240;
 			msgId = 3;
 		}
+		else if ((actorName1 == "stargate" && actorName2 == "Corvette") || (actorName2 == "stargate" && actorName1 == "Corvette"))
+		{
+			std::cout << "123";
+			checkTimer = frames + 240;
+			if (status == 6)
+			{
+				msgId = 8;
+				status = 9;
+			}
+			else if (status == 9)
+			{
+			}
+			else
+			{
+				msgId = 7;
+			}
+
+		}
 	}
 	virtual void onConstraintBreak(PxConstraintInfo* constraints, PxU32 count) {}
 	virtual void onWake(PxActor** actors, PxU32 count) {}
@@ -147,10 +165,16 @@ GLuint earthTexture;
 GLuint marsTexture;
 GLuint moonTexture;
 GLuint icyTexture;
+GLuint stargateTexture;
 GLuint neptunTexture;
 GLuint jowisTexture;
+GLuint mercuryTexture;
+GLuint venusTexture;
 GLuint skyboxTexture;
 GLuint particleTexture;
+GLuint parallax_diffuse;
+GLuint parallax_normal;
+GLuint parallax_disp;
 
 //assimp
 std::shared_ptr<Model> cube;
@@ -159,6 +183,7 @@ std::shared_ptr<Model> corvette;
 std::shared_ptr<Model> asteroid;
 std::shared_ptr<Model> crewmate;
 std::shared_ptr<Model> hamster;
+std::shared_ptr<Model> stargate;
 
 //asteroids
 GLuint bufferAsteroids;
@@ -205,7 +230,6 @@ int LastUsedParticle = 0;
 void SortParticles() {
 	std::sort(&ParticlesContainer[0], &ParticlesContainer[MaxParticles]);
 }
-
 
 int FindUnusedParticle() {
 
@@ -607,6 +631,8 @@ void updateObjects()
 	auto marsPos = mars->findOrbit(lastTime / 5.0f, sunPos2, glm::vec3(0, 1, 0), glm::vec3(-6.5f, 0.0f, -6.5f));
 	mars->SetPosition(marsPos);
 	mars->SetRotation(glm::vec3(0, 0, 1), lastTime / 2.0f);
+	auto actorMars = getActor("Mars");
+	actorMars->setKinematicTarget(PxTransform(PxVec3(marsPos.x, marsPos.y, marsPos.z)));
 
 	Object *jowis = findObject("Jowis");
 	Object *jowisMoon1 = findObject("MoonJup1");
@@ -615,6 +641,8 @@ void updateObjects()
 	auto jowisPos = jowis->findOrbit(lastTime / 15.0f, sunPos, glm::vec3(0, 1, 0), glm::vec3(-55.5f, 2.0f, -55.5f));
 	jowis->SetPosition(jowisPos);
 	jowis->SetRotation(glm::vec3(0, 0, 1), lastTime/2.0f);
+	auto actorJowis = getActor("Jowis");
+	actorJowis->setKinematicTarget(PxTransform(PxVec3(jowisPos.x, jowisPos.y, jowisPos.z)));
 
 	auto jowisMoon1Pos = jowisMoon1->findOrbit(lastTime, jowisPos, glm::vec3(1, 0, 0), glm::vec3(0, 3.5, 0));
 	jowisMoon1->SetPosition(jowisMoon1Pos);
@@ -632,11 +660,30 @@ void updateObjects()
 	auto neptunPos = neptun->findOrbit(lastTime / 17.0f, sunPos, glm::vec3(0, 1, 0), glm::vec3(-85.5f, -2.0f, -85.5f));
 	neptun->SetPosition(neptunPos);
 	neptun->SetRotation(glm::vec3(1, 0, 0), lastTime / 2.0f);
+	auto actorNeptune = getActor("Neptun");
+	actorNeptune->setKinematicTarget(PxTransform(PxVec3(neptunPos.x, neptunPos.y, neptunPos.z)));
+
+	Object *planet1 = findObject("planet1");
+	auto planet1Pos = planet1->findOrbit(lastTime / 12.0f, sunPos2, glm::vec3(0, 1, 0), glm::vec3(-20.5f, 2.0f, -20.5f));
+	planet1->SetPosition(planet1Pos);
+	planet1->SetRotation(glm::vec3(-1, 0, 0), lastTime);
+	auto actorPlanet1 = getActor("planet1");
+	actorPlanet1->setKinematicTarget(PxTransform(PxVec3(planet1Pos.x, planet1Pos.y, planet1Pos.z)));
+
+	Object *planet2 = findObject("planet2");
+	auto planet2Pos = planet2->findOrbit(lastTime / 10.0f, sunPos, glm::vec3(0, 1, 0), glm::vec3(-15.5f, 1.0f, -15.5f));
+	planet2->SetPosition(planet2Pos);
+	planet2->SetRotation(glm::vec3(-1, 0, 0), lastTime/5.0f);
+	auto actorPlanet2 = getActor("planet2");
+	actorPlanet2->setKinematicTarget(PxTransform(PxVec3(planet2Pos.x, planet2Pos.y, planet2Pos.z)));
 
 	Object *deadstar = findObject("Dead star");
 	auto starPos = deadstar->findOrbit(lastTime / 35.0f, sunPos, glm::vec3(0, 1, 0), glm::vec3(-135.5f, 0.0f, -135.5f));
 	deadstar->SetPosition(starPos);
 	deadstar->SetRotation(glm::vec3(0, 0, 1), lastTime / 12.0f);
+	auto actorStar = getActor("Dead star");
+	actorStar->setKinematicTarget(PxTransform(PxVec3(starPos.x, starPos.y, starPos.z)));
+
 }
 
 void updatePhysics()
@@ -866,7 +913,6 @@ void renderScene()
 	glutSwapBuffers();
 }
 
-
 void initPhysics()
 {
 	material = pxScene.physics->createMaterial(0.5, 0.5, 0.5);
@@ -877,8 +923,10 @@ void initPhysics()
 		{
 			if (obj.GetName() == "Space Humster")
 				rectangleShape = pxScene.physics->createShape(PxBoxGeometry(0.3f, 0.3f, 0.3f), *material);
+			if (obj.GetName() == "stargater")
+				rectangleShape = pxScene.physics->createShape(PxBoxGeometry(obj.GetScale().x, obj.GetScale().y, obj.GetScale().z), *material);
 			if (obj.GetName() == "humster")
-				rectangleShape = pxScene.physics->createShape(PxBoxGeometry(0.3f, 0.3f, 0.3f), *material);
+				rectangleShape = pxScene.physics->createShape(PxBoxGeometry(obj.GetScale().x, obj.GetScale().y, obj.GetScale().z), *material);
 			else if (obj.GetName() == "Corvette")
 				rectangleShape = pxScene.physics->createShape(PxBoxGeometry(0.5f, 0.5f, 0.5f), *material);
 			else rectangleShape = pxScene.physics->createShape(PxBoxGeometry(1, 1, 1), *material);
@@ -1071,6 +1119,11 @@ void initObjects()
 		sunPos2, glm::vec3(0.1f), glm::vec3(2.5f), 0, false, false);
 	objects.push_back(obj);
 
+	obj = Object("stargate", stargate, stargateTexture, programSun, glm::vec3(0.9f, 0.9f, 2.0f),
+		glm::vec3(cameraPos + glm::vec3(80, -0.3, 55)), glm::vec3(0.1f), glm::vec3(1.0f), 0, false, false);
+	//obj.textureDepthID = -1;
+	objects.push_back(obj);
+
 	Object planet = Object("Earth", sphere, earthTexture, programTex, glm::vec3(1.0f), 
 		glm::vec3(-10.5f, 0.0f, -10.5f), glm::vec3(0.0f, 0.0f, 0.1f), glm::vec3(0.5f, 0.5f, 0.5f), 0, false, true);
 	objects.push_back(planet);
@@ -1085,6 +1138,14 @@ void initObjects()
 
 	planet = Object("Neptun", sphere, neptunTexture, programTex, glm::vec3(1.0f),
 		glm::vec3(-40.5f, 0.0f, -6.5f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.7f), 0, false, true);
+	objects.push_back(planet);
+
+	planet = Object("planet1", sphere, venusTexture, programTex, glm::vec3(1.0f),
+		glm::vec3(-90.5f, 0.0f, -6.5f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(1.2f), 0, false, true);
+	objects.push_back(planet);
+
+	planet = Object("planet2", sphere, mercuryTexture, programTex, glm::vec3(1.0f),
+		glm::vec3(-90.5f, 0.0f, -6.5f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(1.2f), 0, false, true);
 	objects.push_back(planet);
 
 	planet = Object("Dead star", sphere, icyTexture, programTex, glm::vec3(1.0f),
@@ -1107,8 +1168,11 @@ void initObjects()
 		glm::vec3(-5, 0, 0), glm::vec3(1, 0, 1), glm::vec3(1.1), 0, true, false);
 	objects.push_back(crewmateObj);
 
-	crewmateObj = Object("humster", hamster, programParallax, glm::vec3(1.0f),
+	crewmateObj = Object("humster", cube, programParallax, glm::vec3(1.0f),
 		glm::vec3(5, 0, 5), glm::vec3(1, 0, 1), glm::vec3(0.1), 0, true, false);
+	crewmateObj.textureDiffuseID = parallax_diffuse;
+	crewmateObj.textureNormalID = parallax_normal;
+	crewmateObj.textureDepthID = parallax_disp;
 	objects.push_back(crewmateObj);
 
 	//glm::mat4 shipModelMatrix = glm::translate(cameraPos + cameraDir * 0.7f + glm::vec3(0, -0.25f, 0)) * glm::rotate(-cameraAngle + glm::radians(90.0f), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(0.0001f));;
@@ -1145,8 +1209,10 @@ void init()
 	asteroid = std::make_shared<Model>("models/Asteroid_X.obj");
 	sphere = std::make_shared<Model>("models/sphere.obj");
 	cube = std::make_shared<Model>("models/cube.obj");
+	stargate = std::make_shared<Model>("models/stargate.obj");
 
 	sunTexture = Core::LoadTexture("textures/sun.png");
+	stargateTexture = Core::LoadTexture("textures/stargate.png");
 	earthTexture = Core::LoadTexture("textures/earth2.png");
 	moonTexture = Core::LoadTexture("textures/moon.png");
 	particleTexture = Core::LoadTexture("textures/sun.png");
@@ -1154,6 +1220,13 @@ void init()
 	marsTexture = Core::LoadTexture("models/textures/Mars/2k_mars.png");
 	jowisTexture = Core::LoadTexture("models/textures/Jupiter/2k_jupiter.png");
 	neptunTexture = Core::LoadTexture("models/textures/Neptune/2k_neptune.png");
+	venusTexture = Core::LoadTexture("models/textures/Mercury/2k_venus.png");
+	mercuryTexture = Core::LoadTexture("models/textures/Mercury/2k_mercury.png");
+
+	parallax_diffuse = Core::LoadTexture("textures/parallax_diffuse.png");
+	parallax_normal = Core::LoadTexture("textures/parallax_normal.png");
+	parallax_disp = Core::LoadTexture("textures/parallax_disp.png");
+
 	skyboxTexture = loadCubemap(faces);
 
 	initParticles();
@@ -1185,6 +1258,12 @@ void init()
 	l4.color = glm::vec3(1.0f, 0.0f, 0.0f);
 	l4.intensity = 0.001;
 	lights.push_back(l4);
+
+	Light l5;
+	l5.position = glm::vec3(cameraPos + glm::vec3(80, -0.3, 55));
+	l5.color = glm::vec3(0.7f, 0.7f, 1.0f);
+	l5.intensity = 20;
+	lights.push_back(l5);
 }
 
 void shutdown()
