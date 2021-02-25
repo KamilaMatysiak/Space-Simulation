@@ -1043,7 +1043,7 @@ void initObjects()
 		glm::vec3(0, 2, 2), glm::vec3(1.5f, 1.0f, 1.0f), glm::vec3(0.3f), 0, false, true);
 	objects.push_back(moon);
 
-	Object crewmateObj = Object("Space Humster", crewmate, programTex, glm::vec3(1.0f), 
+	Object crewmateObj = Object("Space Humster", crewmate, programParallax, glm::vec3(1.0f), 
 		glm::vec3(-5, 0, 0), glm::vec3(1, 0, 1), glm::vec3(0.1), 0, true, false);
 	objects.push_back(crewmateObj);
 
